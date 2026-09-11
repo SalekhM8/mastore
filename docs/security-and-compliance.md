@@ -138,13 +138,13 @@ Status: **in force**.
 
 Application-level envelope encryption, so a database dump or a Supabase incident does not yield usable tokens.
 
-- Master key: 32 bytes, base64, in Vercel env `SYNC_KEK_V1`, and mirrored in Supabase Vault for migration scripts. Never in the repo, never in `.env.example` with a real value.
+- Master key: 32 bytes, base64, in Vercel env `CREDENTIALS_MASTER_KEY` with its id in `CREDENTIALS_MASTER_KEY_ID`, and mirrored in Supabase Vault for migration scripts. Never in the repo, never in `.env.example` with a real value.
 - Per-row data key: 32 random bytes generated at write time.
 - Data key encrypted with the master key using AES-256-GCM. Token encrypted with the data key using AES-256-GCM. Both nonces random, 12 bytes.
-- Stored columns on `channel_accounts`: `credentials_ciphertext bytea`, `credentials_nonce bytea`, `dek_ciphertext bytea`, `dek_nonce bytea`, `kek_version smallint`.
+- Stored as one self-describing blob in `channel_accounts.credentials_ciphertext bytea` (version byte, DEK nonce, wrapped DEK, data nonce, ciphertext) with the master key id in `credentials_key_id`. Layout documented in `src/lib/crypto.ts`.
 - AAD for both encryptions is `workspace_id || channel_account_id`, so a ciphertext moved to another row fails to decrypt.
-- Decryption happens only in `lib/crypto/credentials.ts`, called only from connector code. Decrypted tokens live in function memory for the duration of one job and are never returned from a Route Handler.
-- Key rotation: add `SYNC_KEK_V2`, run a job that re-wraps every row's data key, bump `kek_version`, retire V1 after all rows are on V2. The token ciphertext is untouched.
+- Decryption happens only in `src/db/channel-accounts.ts` (`loadAccountContext`), called only from the job tier. Decrypted tokens live in function memory for the duration of one job and are never returned from a Route Handler.
+- Key rotation: set a new master key and id, run a job that calls `rewrapCredentials` on every row, retire the old key once no row references its id. The token ciphertext is untouched.
 
 ### Rotation schedule
 
@@ -285,7 +285,7 @@ Status: **in force**.
 
 - Supabase Auth with email magic link and OAuth (Google) for sellers. Password login enabled with Supabase's leaked-password check on. MFA (TOTP) offered to sellers at launch and required for any workspace with more than 500 listings (pre-launch policy).
 - Sessions via `@supabase/ssr` cookies, `httpOnly`, `Secure`, `SameSite=Lax`. Every Server Component and Route Handler calls `supabase.auth.getUser()` (server-verified), never `getSession()` alone, before touching data.
-- `middleware.ts` refreshes the session and redirects unauthenticated requests to sign-in for every route under `/app`.
+- `src/proxy.ts` (Next.js 16 renamed middleware to proxy) refreshes the session with `getClaims()` and redirects unauthenticated requests to sign-in for every route under `/app` and `/connect`.
 - OAuth callbacks from marketplaces (`/connect/[channel]/callback`) require a signed `state` parameter bound to the seller's session and workspace, valid for 10 minutes, single use. A callback with a mismatched state is rejected and logged.
 
 ### CSRF

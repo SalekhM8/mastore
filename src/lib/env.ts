@@ -20,6 +20,11 @@ const serverSchema = z.object({
   EBAY_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   EBAY_DELETION_VERIFICATION_TOKEN: z.string().min(32).max(80).optional(),
   APP_URL: z.string().url().default("http://localhost:3000"),
+  /** Direct Postgres connection for the job tier and integration tests. Use the pooler URL on Vercel. */
+  DATABASE_URL: z.string().url(),
+  /** 32 random bytes, base64. Signs OAuth state parameters. */
+  OAUTH_STATE_SECRET: z.string().min(40),
+  LOG_LEVEL: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;

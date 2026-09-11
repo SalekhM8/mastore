@@ -47,6 +47,16 @@ export class FakeConnector implements ChannelConnector {
   async refreshCredentials(bundle: AccountContext["credentials"]) {
     return { kind: "ok" as const, value: bundle };
   }
+  async identify(bundle: AccountContext["credentials"]) {
+    return {
+      kind: "ok" as const,
+      value: {
+        externalAccountId: `fake-${bundle.accessToken.slice(0, 8)}`,
+        displayName: "Fake store",
+        marketplace: "GB",
+      },
+    };
+  }
   async healthCheck() {
     return { ok: true, checkedAt: new Date().toISOString() };
   }

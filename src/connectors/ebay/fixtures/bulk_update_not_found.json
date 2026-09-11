@@ -1,0 +1,17 @@
+{
+  "responses": [
+    {
+      "sku": "SKU-RED-9",
+      "statusCode": 404,
+      "errors": [
+        {
+          "errorId": 25710,
+          "domain": "API_INVENTORY",
+          "category": "REQUEST",
+          "message": "We didn't find the entity you are requesting. Please verify the request",
+          "longMessage": "We didn't find the entity you are requesting. Please verify the request"
+        }
+      ]
+    }
+  ]
+}

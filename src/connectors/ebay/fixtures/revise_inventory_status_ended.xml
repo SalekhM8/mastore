@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReviseInventoryStatusResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-10T14:05:00.000Z</Timestamp>
+  <Ack>Failure</Ack>
+  <Errors>
+    <ShortMessage>Listing has ended.</ShortMessage>
+    <LongMessage>The listing you are trying to revise has ended and cannot be changed.</LongMessage>
+    <ErrorCode>21916750</ErrorCode>
+    <SeverityCode>Error</SeverityCode>
+    <ErrorClassification>RequestError</ErrorClassification>
+  </Errors>
+  <Version>1271</Version>
+  <Build>E1271_CORE_API_19110890_R1</Build>
+</ReviseInventoryStatusResponse>

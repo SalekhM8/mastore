@@ -1,0 +1,18 @@
+{
+  "total": 2,
+  "size": 2,
+  "limit": 25,
+  "offset": 0,
+  "inventoryItems": [
+    {
+      "sku": "SKU-RED-9",
+      "product": { "title": "Nike Air Max 90 UK 9 Red", "imageUrls": ["https://i.ebayimg.com/images/g/abc/s-l1600.jpg"] },
+      "availability": { "shipToLocationAvailability": { "quantity": 4 } }
+    },
+    {
+      "sku": "SKU-BLUE-8",
+      "product": { "title": "Adidas Samba UK 8 Blue", "imageUrls": [] },
+      "availability": { "shipToLocationAvailability": { "quantity": 1 } }
+    }
+  ]
+}

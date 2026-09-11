@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GetItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-10T14:06:00.000Z</Timestamp>
+  <Ack>Success</Ack>
+  <Version>1271</Version>
+  <Item>
+    <ItemID>110556789012</ItemID>
+    <Title>Nike Air Max 90 UK 9 Red</Title>
+    <Quantity>10</Quantity>
+    <SellingStatus>
+      <CurrentPrice currencyID="GBP">24.99</CurrentPrice>
+      <QuantitySold>7</QuantitySold>
+      <ListingStatus>Active</ListingStatus>
+    </SellingStatus>
+  </Item>
+</GetItemResponse>

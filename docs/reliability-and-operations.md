@@ -200,9 +200,9 @@ Webhooks are best effort on every channel (eBay, TikTok and Depop say so in thei
 
 **Self-healing rules.**
 
-- Channel shows **more** than the ledger (the dangerous direction): push the ledger value immediately, priority high, and record a `drift_corrected` event. This is the oversell precursor.
+- Channel shows **more** than the ledger (the dangerous direction): push the ledger value immediately, priority high, and write a drift correction line to the activity log. The ledger itself is untouched because no quantity changed. This is the oversell precursor.
 - Channel shows **less** than the ledger and the seller edited it on the marketplace (channel's `updated_at` is newer than our last push): treat the marketplace as a manual adjustment, write a `manual_adjust` ledger event with actor `reconcile:{channel}`, and fan out. Sellers do edit on the marketplace; fighting them is worse than following.
-- Channel shows less and we did not push and it was not edited: push ours, record `drift_corrected`.
+- Channel shows less and we did not push and it was not edited: push ours, log the correction.
 - Order found by poll that the ledger never saw: apply it normally (the idempotency key matches what the webhook would have used) and increment `webhook_missed{channel}`. Three misses in an hour for one channel → Sev 2 alert.
 - Drift on more than 5% of a seller's listings on one channel → stop self-healing for that account, alert Sev 2, show a banner on the sync page. Something structural is wrong (wrong account connected, migration side effect) and mass-correcting could make it worse.
 

@@ -1,0 +1,39 @@
+{
+  "total": 2,
+  "limit": 50,
+  "offset": 0,
+  "orders": [
+    {
+      "orderId": "12-34567-89012",
+      "creationDate": "2026-09-10T14:03:11.000Z",
+      "lastModifiedDate": "2026-09-10T14:03:11.000Z",
+      "orderFulfillmentStatus": "NOT_STARTED",
+      "cancelStatus": { "cancelState": "NONE_REQUESTED" },
+      "lineItems": [
+        {
+          "lineItemId": "10045678901234",
+          "legacyItemId": "110556789012",
+          "sku": "SKU-RED-9",
+          "quantity": 2,
+          "lineItemCost": { "value": "49.98", "currency": "GBP" },
+          "lineItemFulfillmentStatus": "NOT_STARTED"
+        }
+      ]
+    },
+    {
+      "orderId": "12-34567-89013",
+      "creationDate": "2026-09-09T09:00:00.000Z",
+      "lastModifiedDate": "2026-09-10T15:00:00.000Z",
+      "orderFulfillmentStatus": "NOT_STARTED",
+      "cancelStatus": { "cancelState": "CANCELED" },
+      "lineItems": [
+        {
+          "lineItemId": "10045678901235",
+          "legacyItemId": "110556789013",
+          "quantity": 1,
+          "lineItemCost": { "value": "15.00", "currency": "GBP" }
+        }
+      ]
+    }
+  ]
+}

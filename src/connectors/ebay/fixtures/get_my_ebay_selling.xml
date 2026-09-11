@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GetMyeBaySellingResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-10T14:07:00.000Z</Timestamp>
+  <Ack>Success</Ack>
+  <Version>1271</Version>
+  <ActiveList>
+    <ItemArray>
+      <Item>
+        <ItemID>110556789012</ItemID>
+        <Title>Nike Air Max 90 UK 9 Red</Title>
+        <SKU>SKU-RED-9</SKU>
+        <Quantity>10</Quantity>
+        <QuantityAvailable>3</QuantityAvailable>
+        <PictureDetails><GalleryURL>https://i.ebayimg.com/images/g/abc/s-l140.jpg</GalleryURL></PictureDetails>
+        <SellingStatus>
+          <CurrentPrice currencyID="GBP">24.99</CurrentPrice>
+          <QuantitySold>7</QuantitySold>
+        </SellingStatus>
+      </Item>
+      <Item>
+        <ItemID>110556789099</ItemID>
+        <Title>Vintage Levi&apos;s 501 W32 L32</Title>
+        <Quantity>1</Quantity>
+        <SellingStatus>
+          <CurrentPrice currencyID="GBP">35.00</CurrentPrice>
+          <QuantitySold>0</QuantitySold>
+        </SellingStatus>
+      </Item>
+    </ItemArray>
+    <PaginationResult>
+      <TotalNumberOfPages>1</TotalNumberOfPages>
+      <TotalNumberOfEntries>2</TotalNumberOfEntries>
+    </PaginationResult>
+  </ActiveList>
+</GetMyeBaySellingResponse>

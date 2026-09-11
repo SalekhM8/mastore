@@ -1,0 +1,5 @@
+{
+  "responses": [
+    { "sku": "SKU-RED-9", "statusCode": 200, "offers": [{ "offerId": "8765432109", "statusCode": 200 }] }
+  ]
+}

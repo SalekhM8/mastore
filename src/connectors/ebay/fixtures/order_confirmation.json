@@ -1,0 +1,23 @@
+{
+  "metadata": { "topic": "ORDER_CONFIRMATION", "schemaVersion": "1.0", "deprecated": false },
+  "notification": {
+    "notificationId": "49feeaeb-4982-42d9-9e4d-6a8c5f1e0e12",
+    "eventDate": "2026-09-10T14:03:12.000Z",
+    "publishDate": "2026-09-10T14:03:13.000Z",
+    "publishAttemptCount": 1,
+    "data": {
+      "orderId": "12-34567-89012",
+      "sellerId": "sync_seller_uk",
+      "creationDate": "2026-09-10T14:03:11.000Z",
+      "lineItems": [
+        {
+          "lineItemId": "10045678901234",
+          "legacyItemId": "110556789012",
+          "sku": "SKU-RED-9",
+          "quantity": 2,
+          "lineItemCost": { "value": "49.98", "currency": "GBP" }
+        }
+      ]
+    }
+  }
+}

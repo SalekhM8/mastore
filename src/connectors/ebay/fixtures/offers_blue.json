@@ -1,0 +1,1 @@
+{ "offers": [ { "offerId": "8765432110", "sku": "SKU-BLUE-8", "marketplaceId": "EBAY_GB", "availableQuantity": 1, "status": "UNPUBLISHED", "pricingSummary": { "price": { "value": "60.00", "currency": "GBP" } } } ], "total": 1 }

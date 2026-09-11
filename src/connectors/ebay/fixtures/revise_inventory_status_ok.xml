@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReviseInventoryStatusResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-10T14:05:00.000Z</Timestamp>
+  <Ack>Success</Ack>
+  <Version>1271</Version>
+  <Build>E1271_CORE_API_19110890_R1</Build>
+  <InventoryStatus>
+    <ItemID>110556789012</ItemID>
+    <StartPrice>24.99</StartPrice>
+    <Quantity>3</Quantity>
+  </InventoryStatus>
+  <Fees><ItemID>110556789012</ItemID></Fees>
+</ReviseInventoryStatusResponse>

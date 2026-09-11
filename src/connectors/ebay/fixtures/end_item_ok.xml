@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EndFixedPriceItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-10T14:08:00.000Z</Timestamp>
+  <Ack>Success</Ack>
+  <Version>1271</Version>
+  <EndTime>2026-09-10T14:08:00.000Z</EndTime>
+</EndFixedPriceItemResponse>

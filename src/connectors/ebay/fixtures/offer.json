@@ -1,0 +1,10 @@
+{
+  "offerId": "8765432109",
+  "sku": "SKU-RED-9",
+  "marketplaceId": "EBAY_GB",
+  "format": "FIXED_PRICE",
+  "availableQuantity": 4,
+  "status": "PUBLISHED",
+  "listing": { "listingId": "110556789012", "listingStatus": "ACTIVE" },
+  "pricingSummary": { "price": { "value": "24.99", "currency": "GBP" } }
+}

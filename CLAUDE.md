@@ -10,6 +10,8 @@ Multi-channel inventory sync SaaS for UK sellers. One catalog, a stock ledger as
 
 ## Non-negotiables
 - Nothing writes stock except `apply_ledger_event`. No direct writes to `ledger_events` or `sku_stock`.
+- Jobs call connectors only through `src/jobs/connectors.ts`. Credentials are decrypted only in `src/db/channel-accounts.ts` for the duration of one job.
+- Local Supabase: always the project CLI (`pnpm exec supabase`, or the `pnpm db:*` scripts), never a global `supabase` binary.
 - Every tenant table has `workspace_id` and RLS in the same migration that creates it.
 - `src/domain/**` imports nothing from `app`, `connectors`, `db`, or `jobs`.
 - Connectors never touch the database or the ledger. They translate and return `PushResult`.
@@ -19,7 +21,8 @@ Multi-channel inventory sync SaaS for UK sellers. One catalog, a stock ledger as
 
 ## Commands
 - `pnpm dev` app · `pnpm db:start` local Supabase · `pnpm db:reset` apply migrations and seed
-- `pnpm test:unit` pure domain tests · `pnpm test:db` integration tests against local Postgres
+- `pnpm test:unit` pure domain tests · `pnpm test:contract` connectors against fixtures · `pnpm test:db` integration tests against local Postgres
+- `pnpm dev` also needs `npx inngest-cli@latest dev` in a second terminal for jobs to run locally
 - `pnpm lint` Biome · `pnpm typecheck`
 
 @AGENTS.md

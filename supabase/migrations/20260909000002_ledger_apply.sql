@@ -94,6 +94,10 @@ begin
 
     update public.channel_listings set desired_quantity = greatest(v_on_hand, 0) where id = v_listing.id;
 
+    -- A queued job of another kind for this listing (e.g. a stock update before a delist) is now stale.
+    update public.push_jobs set status = 'superseded', finished_at = now()
+    where channel_listing_id = v_listing.id and status = 'queued' and kind <> v_kind;
+
     insert into public.push_jobs
       (workspace_id, channel_account_id, channel_listing_id, kind, desired, ledger_seq, priority)
     values
