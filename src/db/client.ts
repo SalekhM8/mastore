@@ -11,11 +11,16 @@ let client: postgres.Sql | undefined;
 
 export function db(): postgres.Sql {
   if (!client) {
-    client = postgres(env().DATABASE_URL, {
-      max: 5,
+    const url = env().DATABASE_URL;
+    const local = /127\.0\.0\.1|localhost/.test(url);
+    client = postgres(url, {
+      // Supabase's transaction pooler on Vercel: one connection per function instance, SSL on,
+      // no prepared statements. Locally, a small pool against Docker.
+      max: local ? 5 : 1,
       idle_timeout: 20,
       connect_timeout: 10,
-      prepare: false, // pooler-safe (Supavisor transaction mode)
+      prepare: false,
+      ...(local ? {} : { ssl: "require" as const }),
       onnotice: () => {},
     });
   }
