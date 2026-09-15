@@ -3,6 +3,7 @@ import { currentUser } from "@/lib/supabase/server";
 
 const NAV = [
   { href: "/app", label: "Overview" },
+  { href: "/app/catalogue", label: "Catalogue" },
   { href: "/app/channels", label: "Channels" },
   { href: "/app/sync", label: "Sync" },
 ] as const;
@@ -15,7 +16,7 @@ export default async function AppLayout({ children }: LayoutProps<"/app">) {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
           <nav className="flex items-center gap-6 text-sm">
             <Link href="/app" className="font-semibold tracking-tight">
-              Sync
+              Mastore
             </Link>
             {NAV.map((n) => (
               <Link

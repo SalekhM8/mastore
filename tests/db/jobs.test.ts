@@ -297,3 +297,31 @@ describe("listing reconciliation", () => {
     expect(l?.remote_quantity).toBe(7);
   });
 });
+
+describe("listing import", () => {
+  it("turns remote listings into unmanaged products with baseline stock, and re-running changes nothing", async () => {
+    const { runImport } = await import("@/jobs/import");
+    const acct = await connectedAccount(wsA, "store-import1");
+    fake.seedRemote("imp-1", 1);
+    fake.seedRemote("imp-2", 4);
+    const first = await runImport(await accountRow(acct));
+    expect(first).toMatchObject({ pages: 1, seen: 2, created: 2, linked: 0, baselined: 2 });
+    const listings =
+      await sql`select managed, status, remote_quantity, sku_id from public.channel_listings where channel_account_id = ${acct} order by external_listing_id`;
+    expect(listings.map((l) => [l.managed, l.status, l.remote_quantity])).toEqual([
+      [false, "active", 1],
+      [false, "active", 4],
+    ]);
+    const stock =
+      await sql`select ss.on_hand, p.item_type from public.sku_stock ss join public.skus s on s.id = ss.sku_id join public.products p on p.id = s.product_id where ss.sku_id in ${sql(listings.map((l) => l.sku_id as string))} order by ss.on_hand`;
+    expect(stock.map((r) => [r.on_hand, r.item_type])).toEqual([
+      [1, "unique"],
+      [4, "stocked"],
+    ]);
+    const jobs = await sql`select count(*)::int as n from public.push_jobs where channel_account_id = ${acct}`;
+    expect(jobs[0]?.n).toBe(0);
+
+    const second = await runImport(await accountRow(acct));
+    expect(second).toMatchObject({ seen: 2, created: 0, linked: 2, baselined: 0 });
+  });
+});

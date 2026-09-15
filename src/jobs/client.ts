@@ -13,6 +13,7 @@ export const EVENTS = {
   pushRequested: "sync/push.requested",
   webhookReceived: "sync/webhook.received",
   accountConnected: "sync/account.connected",
+  importRequested: "sync/import.requested",
 } as const;
 
 export const PushRequestedData = z.object({
