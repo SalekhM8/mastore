@@ -115,7 +115,7 @@ export const webhookIngest = inngest.createFunction(
   {
     id: "webhook-ingest",
     triggers: [{ event: EVENTS.webhookReceived }],
-    concurrency: { key: "event.data.channel", limit: 10 },
+    concurrency: { key: "event.data.channel", limit: 5 }, // Inngest free plan caps per-function concurrency at 5
     retries: 3,
   },
   async ({ event, step }) => {
