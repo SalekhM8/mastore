@@ -52,12 +52,12 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ channel
   const redirectUri = `${env().APP_URL}/connect/${channel.data}/callback`;
   const exchanged = await connector.exchangeAuthCode({ code, redirectUri });
   if (exchanged.kind !== "ok") {
-    log.warn({ kind: exchanged.kind }, "code exchange failed");
+    log.warn({ result: exchanged }, "code exchange failed");
     fail(`${label} rejected the authorisation. Try connecting again.`);
   }
   const identity = await connector.identify(exchanged.value);
   if (identity.kind !== "ok") {
-    log.warn({ kind: identity.kind }, "identify failed");
+    log.warn({ result: identity }, "identify failed");
     fail(`${label} connected but did not say which account this is. Try again.`);
   }
 

@@ -147,7 +147,7 @@ export async function getSellerIdentity(
   cfg: EbayConfig,
   bundle: CredentialBundle,
 ): Promise<PushResult<SellerIdentity>> {
-  const res = await exchange(cfg, apiUrl(cfg, "/commerce/identity/v1/user/"), {
+  const res = await exchange(cfg, `${endpoints(cfg.env).apiz}/commerce/identity/v1/user/`, {
     method: "GET",
     headers: restHeaders(bundle.accessToken),
   });

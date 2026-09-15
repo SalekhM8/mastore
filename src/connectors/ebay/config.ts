@@ -22,6 +22,8 @@ export interface EbayEndpoints {
   readonly api: string;
   readonly auth: string;
   readonly trading: string;
+  /** Commerce Identity API is served from the apiz host, not api. */
+  readonly apiz: string;
 }
 
 export function endpoints(env: EbayConfig["env"]): EbayEndpoints {
@@ -30,6 +32,7 @@ export function endpoints(env: EbayConfig["env"]): EbayEndpoints {
     api: `https://api.${sub}ebay.com`,
     auth: `https://auth.${sub}ebay.com`,
     trading: `https://api.${sub}ebay.com/ws/api.dll`,
+    apiz: `https://apiz.${sub}ebay.com`,
   };
 }
 
