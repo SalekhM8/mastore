@@ -74,10 +74,15 @@ export async function GET(request: NextRequest, ctx: { params: Promise<{ channel
     channelAccountId: accountId,
     message: `${label} account ${identity.value.displayName} connected. Sync is off until you turn it on.`,
   });
-  await inngest.send({
-    name: EVENTS.accountConnected,
-    data: { workspaceId: workspace.id, channel: channel.data, channelAccountId: accountId },
-  });
+  try {
+    await inngest.send({
+      name: EVENTS.accountConnected,
+      data: { workspaceId: workspace.id, channel: channel.data, channelAccountId: accountId },
+    });
+  } catch (e) {
+    // The account is saved; import can be started by hand. Locally this fails when no Inngest dev server runs.
+    log.warn({ err: e }, "could not emit account.connected");
+  }
 
   const headers = new Headers({
     Location: `/app/channels?notice=${encodeURIComponent(`${label} connected as ${identity.value.displayName}.`)}`,

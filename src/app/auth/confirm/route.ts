@@ -3,23 +3,37 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 
-const Params = z.object({
-  token_hash: z.string().min(1),
-  type: z.enum(["magiclink", "email", "signup", "recovery", "invite", "email_change"]),
-  next: z.string().startsWith("/").default("/app"),
-});
+const Next = z.string().startsWith("/").default("/app");
+const OtpType = z.enum(["magiclink", "email", "signup", "recovery", "invite", "email_change"]);
 
-/** Magic link landing. Exchanges the token hash for a session cookie, then continues. */
+/**
+ * Magic link landing. Supabase can deliver the link in two shapes depending on the email template:
+ * a PKCE `code` (the default when the sign-in started from this app), or a `token_hash` plus `type`
+ * (when the template is customised). Both end in a session cookie, then we continue to `next`.
+ */
 export async function GET(request: NextRequest): Promise<Response> {
   const sp = request.nextUrl.searchParams;
-  const parsed = Params.safeParse({
-    token_hash: sp.get("token_hash"),
-    type: sp.get("type"),
-    next: sp.get("next") ?? "/app",
-  });
-  if (!parsed.success) redirect("/login?error=That+link+is+not+valid");
+  const next = Next.catch("/app").parse(sp.get("next") ?? "/app");
   const supabase = await supabaseServer();
-  const { error } = await supabase.auth.verifyOtp({ token_hash: parsed.data.token_hash, type: parsed.data.type });
-  if (error) redirect("/login?error=That+link+has+expired.+Request+a+new+one");
-  redirect(parsed.data.next);
+
+  const code = sp.get("code");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error)
+      redirect(`/login?error=${encodeURIComponent("That link has expired or was already used. Request a new one.")}`);
+    redirect(next);
+  }
+
+  const tokenHash = sp.get("token_hash");
+  const type = OtpType.safeParse(sp.get("type"));
+  if (tokenHash && type.success) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type.data });
+    if (error)
+      redirect(`/login?error=${encodeURIComponent("That link has expired or was already used. Request a new one.")}`);
+    redirect(next);
+  }
+
+  // Supabase reports template or link problems in the query string.
+  const desc = sp.get("error_description");
+  redirect(`/login?error=${encodeURIComponent(desc ?? "That link is not valid. Request a new one.")}`);
 }
