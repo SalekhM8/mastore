@@ -9,7 +9,7 @@ import { inngest } from "./client";
 import { CHANNEL_LABEL, getConnector } from "./connectors";
 import { loadFreshAccount } from "./credentials";
 import { processInbound } from "./inbound";
-import { requestPushes } from "./push";
+import { requestPushesOrRun } from "./push";
 
 /**
  * Reconciliation: the safety net under best-effort webhooks.
@@ -127,7 +127,7 @@ export async function reconcileListingsForAccount(
       context: { listing_id: l.id },
     });
   }
-  await requestPushes(jobIds);
+  await requestPushesOrRun(jobIds);
   return { checked: listings.length, drift: drifted.length, corrected: jobIds.length };
 }
 

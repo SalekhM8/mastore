@@ -108,3 +108,28 @@ export type NormalisedInbound =
       readonly occurredAt: string;
     }
   | { readonly type: "auth_revoked"; readonly occurredAt: string };
+
+/**
+ * What a seller fills in once to list an item. Connectors map this onto their marketplace;
+ * anything a channel needs beyond it lives in `channelHints` under that channel's name.
+ */
+export interface ListingDraft {
+  readonly sku: string;
+  readonly title: string;
+  readonly description: string;
+  readonly priceMinor: number;
+  readonly quantity: number;
+  readonly condition:
+    | "new"
+    | "new_other"
+    | "refurbished"
+    | "used_like_new"
+    | "used_very_good"
+    | "used_good"
+    | "used_acceptable"
+    | "for_parts";
+  readonly photoUrls: readonly string[];
+  readonly brand?: string;
+  readonly attributes?: Readonly<Record<string, string>>;
+  readonly channelHints?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+}

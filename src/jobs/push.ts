@@ -1,3 +1,4 @@
+import { finalizeCreatedListing } from "@/db/catalogue";
 import { setAccountStatus, touchAccount } from "@/db/channel-accounts";
 import { db } from "@/db/client";
 import { getListing, recordPushApplied, setListingError, skuLastEventSeq, toListingRef } from "@/db/listings";
@@ -115,6 +116,20 @@ export async function runPushJob(
     case "price":
       result = await connector.pushPrice(account, ref, job.desired.price_minor ?? 0);
       break;
+    case "listing_create": {
+      const created = await connector.createListing(account, job.desired.draft);
+      if (created.kind === "ok") {
+        await finalizeCreatedListing({
+          listingId: listing.id,
+          externalListingId: created.value.externalListingId,
+          externalIds: created.value.externalIds,
+          ledgerSeq: Number(job.ledger_seq),
+          quantity,
+        });
+      }
+      result = created;
+      break;
+    }
     default:
       result = { kind: "terminal", code: "unsupported_job", messageForSeller: `${job.kind} is not supported yet.` };
   }
@@ -136,7 +151,9 @@ export async function runPushJob(
         message:
           job.kind === "delist"
             ? `${label}: ${title} ended after stock reached 0.`
-            : `${label}: ${title} set to ${quantity}.`,
+            : job.kind === "listing_create"
+              ? `${label}: ${title} listed with quantity ${quantity}.`
+              : `${label}: ${title} set to ${quantity}.`,
         context: { job_id: jobId, kind: job.kind, quantity, duration_ms: durationMs },
       });
       jlog.info({ durationMs }, "push succeeded");
@@ -227,6 +244,21 @@ export async function requestPushes(jobIds: readonly string[]): Promise<number> 
     return 0;
   }
   return rows.length;
+}
+
+/**
+ * Emit push events, and when the job runner is unreachable (local development without it),
+ * run the jobs inline so the seller still sees the result.
+ */
+export async function requestPushesOrRun(jobIds: readonly string[]): Promise<{ sent: number; ran: number }> {
+  if (jobIds.length === 0) return { sent: 0, ran: 0 };
+  const sent = await requestPushes(jobIds);
+  if (sent > 0) return { sent, ran: 0 };
+  const rows = await db()<{ id: string; channel: Channel }[]>`
+    select j.id, a.channel from public.push_jobs j join public.channel_accounts a on a.id = j.channel_account_id
+    where j.id = any(${jobIds as string[]}::uuid[]) and j.status in ('queued','failed')`;
+  for (const r of rows) await runPushJob(r.channel, r.id);
+  return { sent: 0, ran: rows.length };
 }
 
 interface ChannelLimits {

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AddFixedPriceItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-16T12:00:00.000Z</Timestamp>
+  <Ack>Failure</Ack>
+  <Errors>
+    <ShortMessage>Invalid category.</ShortMessage>
+    <LongMessage>The category selected is not a leaf category. Choose a category that has no sub-categories.</LongMessage>
+    <ErrorCode>87</ErrorCode>
+    <SeverityCode>Error</SeverityCode>
+    <ErrorClassification>RequestError</ErrorClassification>
+  </Errors>
+  <Version>1271</Version>
+</AddFixedPriceItemResponse>

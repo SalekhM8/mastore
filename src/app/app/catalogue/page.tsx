@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
 
@@ -23,7 +24,15 @@ export default async function CataloguePage() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Catalogue</h1>
-        <span className="text-sm text-zinc-500">{products?.length ?? 0} products</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-zinc-500">{products?.length ?? 0} products</span>
+          <Link
+            href="/app/catalogue/new"
+            className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          >
+            New product
+          </Link>
+        </div>
       </div>
       {(products?.length ?? 0) === 0 ? (
         <p className="mt-6 text-sm text-zinc-500">
@@ -62,7 +71,11 @@ export default async function CataloguePage() {
                 const listings = skus.flatMap((s) => s.channel_listings ?? []);
                 return (
                   <tr key={p.id}>
-                    <td className="max-w-md truncate py-2 pr-4">{p.title}</td>
+                    <td className="max-w-md truncate py-2 pr-4">
+                      <Link href={`/app/catalogue/${p.id}`} className="hover:underline">
+                        {p.title}
+                      </Link>
+                    </td>
                     <td className="py-2 pr-4 font-mono text-xs text-zinc-600 dark:text-zinc-400">{first?.sku}</td>
                     <td className="py-2 pr-4 capitalize">{p.item_type}</td>
                     <td className={`py-2 pr-4 ${onHand <= 0 ? "text-red-600" : ""}`}>{onHand}</td>

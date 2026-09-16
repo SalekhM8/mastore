@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type {
   ChannelCapabilities,
   CredentialBundle,
@@ -71,6 +72,28 @@ const MISSING_OFFER: PushResult = {
  * (website-created listings). Every outbound call picks the API from the listing's model.
  * See README.md in this folder.
  */
+const ListingDraftSchema = z.object({
+  sku: z.string().min(1).max(50),
+  title: z.string().min(1).max(80),
+  description: z.string().min(1).max(500_000),
+  priceMinor: z.number().int().positive(),
+  quantity: z.number().int().positive(),
+  condition: z.enum([
+    "new",
+    "new_other",
+    "refurbished",
+    "used_like_new",
+    "used_very_good",
+    "used_good",
+    "used_acceptable",
+    "for_parts",
+  ]),
+  photoUrls: z.array(z.string().url()).max(24),
+  brand: z.string().max(65).optional(),
+  attributes: z.record(z.string(), z.string()).optional(),
+  channelHints: z.record(z.string(), z.record(z.string(), z.string())).optional(),
+});
+
 export class EbayConnector implements ChannelConnector {
   readonly channel = "ebay" as const;
   private readonly verifier: NotificationVerifier;
@@ -155,11 +178,33 @@ export class EbayConnector implements ChannelConnector {
     return target ? inventory.updatePrice(this.cfg, token, target, priceMinor) : Promise.resolve(MISSING_OFFER);
   }
 
-  async createListing(_account: AccountContext, _payload: unknown): Promise<PushResult<RemoteListingRef>> {
+  async createListing(account: AccountContext, payload: unknown): Promise<PushResult<RemoteListingRef>> {
+    const parsed = ListingDraftSchema.safeParse(payload);
+    if (!parsed.success) {
+      return {
+        kind: "terminal",
+        code: "ebay.draft.shape",
+        messageForSeller:
+          "The listing is missing something eBay needs: " + parsed.error.issues.map((i) => i.path.join(".")).join(", "),
+      };
+    }
+    const d = parsed.data;
+    const res = await trading.addFixedPriceItem(this.cfg, account.credentials.accessToken, {
+      sku: d.sku,
+      title: d.title,
+      description: d.description,
+      priceMinor: d.priceMinor,
+      quantity: d.quantity,
+      condition: d.condition,
+      photoUrls: d.photoUrls,
+      ...(d.brand ? { brand: d.brand } : {}),
+      ...(d.attributes ? { attributes: d.attributes } : {}),
+      ...(d.channelHints?.ebay ? { hints: d.channelHints.ebay } : {}),
+    });
+    if (res.kind !== "ok") return res;
     return {
-      kind: "terminal",
-      code: "ebay.not_implemented",
-      messageForSeller: "Creating eBay listings from Sync is not available yet. List on eBay and import it here.",
+      kind: "ok",
+      value: { externalListingId: res.value.itemId, externalIds: { listingModel: "trading", sku: d.sku } },
     };
   }
 

@@ -1,6 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
-import { importListingsAction, setSyncEnabled } from "./actions";
+import { checkOrdersNow, importListingsAction, setSyncEnabled } from "./actions";
 
 const STATUS_LABEL: Record<string, string> = {
   connecting: "Connecting",
@@ -116,7 +116,18 @@ export default async function ChannelsPage(props: PageProps<"/app/channels">) {
                       </form>
                     </td>
                     <td className="py-2 pr-4 text-zinc-500">
-                      {a.last_inbound_at ? new Date(a.last_inbound_at).toLocaleString("en-GB") : "never"}
+                      <div className="flex items-center gap-2">
+                        <span>{a.last_inbound_at ? new Date(a.last_inbound_at).toLocaleString("en-GB") : "never"}</span>
+                        <form action={checkOrdersNow}>
+                          <input type="hidden" name="accountId" value={a.id} />
+                          <button
+                            type="submit"
+                            className="rounded-md border border-zinc-300 px-2 py-0.5 text-xs dark:border-zinc-700"
+                          >
+                            Check now
+                          </button>
+                        </form>
+                      </div>
                     </td>
                     <td className="py-2 pr-4 text-zinc-500">
                       {a.last_outbound_at ? new Date(a.last_outbound_at).toLocaleString("en-GB") : "never"}

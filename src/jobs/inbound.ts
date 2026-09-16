@@ -8,7 +8,7 @@ import type { Channel, NormalisedInbound } from "@/domain/channels/types";
 import { planInbound } from "@/domain/ledger/inbound";
 import { withContext } from "@/lib/log";
 import { CHANNEL_LABEL } from "./connectors";
-import { requestPushes } from "./push";
+import { requestPushesOrRun } from "./push";
 
 /**
  * Shared by webhook ingest and the order poll: takes normalised inbound events for one account
@@ -154,7 +154,7 @@ export async function processInbound(
       }
     }
   }
-  summary.jobsRequested = await requestPushes(jobIds);
+  summary.jobsRequested = (await requestPushesOrRun(jobIds)).sent;
   log.info({ ...summary, source }, "inbound processed");
   return summary;
 }

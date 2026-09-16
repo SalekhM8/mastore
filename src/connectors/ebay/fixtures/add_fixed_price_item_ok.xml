@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AddFixedPriceItemResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-16T12:00:00.000Z</Timestamp>
+  <Ack>Success</Ack>
+  <Version>1271</Version>
+  <Build>E1271_CORE_API_19110890_R1</Build>
+  <ItemID>110559999001</ItemID>
+  <SKU>MAS-0001</SKU>
+  <StartTime>2026-09-16T12:00:00.000Z</StartTime>
+  <EndTime>2026-10-16T12:00:00.000Z</EndTime>
+  <Fees>
+    <Fee><Name>ListingFee</Name><Fee currencyID="GBP">0.0</Fee></Fee>
+  </Fees>
+</AddFixedPriceItemResponse>

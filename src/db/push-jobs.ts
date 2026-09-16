@@ -8,7 +8,7 @@ export interface PushJobRow {
   channel_account_id: string;
   channel_listing_id: string;
   kind: "stock" | "price" | "listing_create" | "listing_update" | "delist" | "relist";
-  desired: { quantity?: number; price_minor?: number };
+  desired: { quantity?: number; price_minor?: number; draft?: unknown };
   ledger_seq: string; // bigint comes back as string
   priority: number;
   status: "queued" | "running" | "succeeded" | "failed" | "superseded" | "dead";
@@ -62,6 +62,28 @@ export async function duePushJobIds(
 /** Put a job back to queued after a transient failure to even claim it (e.g. kill switch on). */
 export async function deferPushJob(jobId: string, untilMs: number): Promise<void> {
   await db()`update public.push_jobs set status = 'queued', next_attempt_at = now() + make_interval(secs => ${untilMs / 1000}) where id = ${jobId} and status = 'running'`;
+}
+
+/** Enqueue a listing_create job carrying the draft the connector will publish. */
+export async function enqueueListingCreateJob(input: {
+  workspaceId: string;
+  channelAccountId: string;
+  channelListingId: string;
+  draft: unknown;
+  quantity: number;
+  ledgerSeq: number;
+}): Promise<string> {
+  const sql = db();
+  const rows = await sql<{ id: string }[]>`
+    insert into public.push_jobs (workspace_id, channel_account_id, channel_listing_id, kind, desired, ledger_seq, priority)
+    values (${input.workspaceId}, ${input.channelAccountId}, ${input.channelListingId}, 'listing_create',
+            ${json(sql, { quantity: input.quantity, draft: input.draft })}, ${input.ledgerSeq}, 3)
+    on conflict (channel_listing_id, kind) where status = 'queued'
+    do update set desired = excluded.desired, ledger_seq = excluded.ledger_seq, next_attempt_at = now()
+    returning id`;
+  const row = rows[0];
+  if (!row) throw new Error("enqueueListingCreateJob returned no row");
+  return row.id;
 }
 
 /** Enqueue (or coalesce into) a stock push for one listing. Used by reconciliation only. */

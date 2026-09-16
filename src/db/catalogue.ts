@@ -75,3 +75,75 @@ export async function setImportStatus(channelAccountId: string, status: Record<s
   const sql = db();
   await sql`update public.channel_accounts set account_settings = account_settings || ${json(sql, { import: status })} where id = ${channelAccountId}`;
 }
+
+/** Placeholder listing row so a listing_create push job has a channel_listing to attach to. */
+export async function createPendingListing(input: {
+  workspaceId: string;
+  channelAccountId: string;
+  skuId: string;
+  priceMinor: number;
+  quantity: number;
+  titleSnapshot: string;
+}): Promise<string> {
+  const sql = db();
+  const rows = await sql<{ id: string }[]>`
+    insert into public.channel_listings
+      (workspace_id, channel_account_id, sku_id, external_listing_id, status, managed, price_minor, desired_quantity, title_snapshot)
+    values
+      (${input.workspaceId}, ${input.channelAccountId}, ${input.skuId}, ${`pending:${crypto.randomUUID()}`}, 'pending', true,
+       ${input.priceMinor}, ${input.quantity}, ${input.titleSnapshot.slice(0, 300)})
+    on conflict (channel_account_id, sku_id) where sku_id is not null do update set status = public.channel_listings.status
+    returning id`;
+  const row = rows[0];
+  if (!row) throw new Error("pending listing insert returned no row");
+  return row.id;
+}
+
+/** After the channel accepts the listing: record its id and mark it live. */
+export async function finalizeCreatedListing(input: {
+  listingId: string;
+  externalListingId: string;
+  externalIds: Readonly<Record<string, string>>;
+  ledgerSeq: number;
+  quantity: number;
+}): Promise<void> {
+  const sql = db();
+  const model = input.externalIds.listingModel;
+  await sql`
+    update public.channel_listings
+    set external_listing_id = ${input.externalListingId}, external_ids = ${json(sql, input.externalIds)},
+        listing_model = ${model === "inventory" || model === "trading" ? model : null},
+        status = 'active', managed = true, pushed_quantity = ${input.quantity}, pushed_at = now(),
+        applied_ledger_seq = greatest(applied_ledger_seq, ${input.ledgerSeq}), last_error = null
+    where id = ${input.listingId}`;
+}
+
+export interface ProductForListing {
+  id: string;
+  workspace_id: string;
+  title: string;
+  description: string;
+  brand: string | null;
+  condition: string | null;
+  attributes: Record<string, unknown>;
+  base_price_minor: string | number;
+  item_type: "unique" | "stocked";
+  sku_id: string;
+  sku: string;
+  on_hand: number;
+  last_event_seq: string | number;
+  photo_urls: string[];
+}
+
+export async function getProductForListing(workspaceId: string, productId: string): Promise<ProductForListing | null> {
+  const rows = await db()<ProductForListing[]>`
+    select p.id, p.workspace_id, p.title, p.description, p.brand, p.condition, p.attributes, p.base_price_minor, p.item_type,
+           s.id as sku_id, s.sku, coalesce(ss.on_hand, 0) as on_hand, coalesce(ss.last_event_seq, 0) as last_event_seq,
+           coalesce((select array_agg(ph.storage_path order by ph.position) from public.product_photos ph where ph.product_id = p.id), '{}') as photo_urls
+    from public.products p
+    join public.skus s on s.product_id = p.id and s.deleted_at is null
+    left join public.sku_stock ss on ss.sku_id = s.id
+    where p.id = ${productId} and p.workspace_id = ${workspaceId} and p.deleted_at is null
+    limit 1`;
+  return rows[0] ?? null;
+}

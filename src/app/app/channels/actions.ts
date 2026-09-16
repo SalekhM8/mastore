@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getChannelAccount } from "@/db/channel-accounts";
 import { EVENTS, inngest } from "@/jobs/client";
 import { runImport } from "@/jobs/import";
+import { pollOrdersForAccount } from "@/jobs/reconcile";
 import { withContext } from "@/lib/log";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
@@ -62,5 +63,21 @@ export async function importListingsAction(formData: FormData): Promise<void> {
       ? `Imported ${result.seen} listings, ${result.created} new products.`
       : `Import skipped: ${result.skipped}.`;
   revalidatePath("/app/channels");
+  redirect(`/app/channels?notice=${encodeURIComponent(msg)}`);
+}
+
+/** Pull recent orders for one account right now. The scheduled poll does this every five minutes. */
+export async function checkOrdersNow(formData: FormData): Promise<void> {
+  const { workspace } = await requireWorkspace();
+  const parsed = AccountForm.safeParse({ accountId: formData.get("accountId") });
+  if (!parsed.success) redirect("/app/channels?error=Bad+request");
+  const row = await getChannelAccount(parsed.data.accountId);
+  if (!row || row.workspace_id !== workspace.id) redirect("/app/channels?error=Account+not+found");
+  const r = await pollOrdersForAccount(row);
+  revalidatePath("/app/channels");
+  const msg =
+    "skipped" in r
+      ? `Order check skipped: ${r.skipped}.`
+      : `Checked ${r.events} order line${r.events === 1 ? "" : "s"} across ${r.pages} page${r.pages === 1 ? "" : "s"}.`;
   redirect(`/app/channels?notice=${encodeURIComponent(msg)}`);
 }

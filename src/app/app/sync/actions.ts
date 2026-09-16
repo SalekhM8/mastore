@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { requestPushes } from "@/jobs/push";
+import { requestPushesOrRun } from "@/jobs/push";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
 
@@ -16,7 +16,7 @@ export async function retryJob(formData: FormData): Promise<void> {
   if (!parsed.success) return;
   const supabase = await supabaseServer();
   const { error } = await supabase.rpc("retry_push_job", { p_job_id: parsed.data.jobId });
-  if (!error) await requestPushes([parsed.data.jobId]);
+  if (!error) await requestPushesOrRun([parsed.data.jobId]);
   revalidatePath("/app/sync");
 }
 

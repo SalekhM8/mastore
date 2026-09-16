@@ -230,3 +230,91 @@ export async function listActive(
   }
   return { kind: "ok", value: { items, hasMore: page < totalPages } };
 }
+
+/** eBay condition ids (Trading ConditionID) for our normalised conditions. */
+const CONDITION_ID: Record<string, string> = {
+  new: "1000",
+  new_other: "1500",
+  refurbished: "2000",
+  used_like_new: "2750",
+  used_very_good: "3000",
+  used_good: "4000",
+  used_acceptable: "5000",
+  for_parts: "7000",
+};
+
+/** Sensible UK defaults a seller can override per listing through channelHints.ebay. */
+const DEFAULTS = {
+  categoryId: "88433", // Everything Else > Other. Overridden by channelHints.ebay.categoryId.
+  location: "United Kingdom",
+  postalCode: "",
+  dispatchDays: "3",
+  shippingService: "UK_RoyalMailSecondClass",
+  shippingCostMinor: "0",
+  returnsWithin: "Days_30",
+};
+
+export interface NewFixedPriceItem {
+  readonly sku: string;
+  readonly title: string;
+  readonly description: string;
+  readonly priceMinor: number;
+  readonly quantity: number;
+  readonly condition: string;
+  readonly photoUrls: readonly string[];
+  readonly brand?: string;
+  readonly attributes?: Readonly<Record<string, string>>;
+  readonly hints?: Readonly<Record<string, string>>;
+}
+
+function money(minor: number): string {
+  return (minor / 100).toFixed(2);
+}
+
+/**
+ * AddFixedPriceItem: creates a Good 'Til Cancelled fixed-price listing on ebay.co.uk.
+ * Returns the new ItemID. The listing is a "trading" model listing for every later call.
+ */
+export async function addFixedPriceItem(
+  cfg: EbayConfig,
+  token: string,
+  item: NewFixedPriceItem,
+): Promise<PushResult<{ itemId: string; fees: string | undefined }>> {
+  const h = { ...DEFAULTS, ...(item.hints ?? {}) };
+  const specifics = Object.entries({ ...(item.brand ? { Brand: item.brand } : {}), ...(item.attributes ?? {}) })
+    .map(([n, v]) => `<NameValueList><Name>${escapeXml(n)}</Name><Value>${escapeXml(v)}</Value></NameValueList>`)
+    .join("");
+  const pictures = item.photoUrls.map((u) => `<PictureURL>${escapeXml(u)}</PictureURL>`).join("");
+  const inner = `<Item>
+<SKU>${escapeXml(item.sku)}</SKU>
+<Title>${escapeXml(item.title.slice(0, 80))}</Title>
+<Description><![CDATA[${item.description}]]></Description>
+<PrimaryCategory><CategoryID>${escapeXml(h.categoryId)}</CategoryID></PrimaryCategory>
+<StartPrice currencyID="GBP">${money(item.priceMinor)}</StartPrice>
+<Quantity>${Math.max(1, Math.floor(item.quantity))}</Quantity>
+<ConditionID>${CONDITION_ID[item.condition] ?? "3000"}</ConditionID>
+<ListingType>FixedPriceItem</ListingType>
+<ListingDuration>GTC</ListingDuration>
+<Country>GB</Country>
+<Currency>GBP</Currency>
+<Location>${escapeXml(h.location)}</Location>
+${h.postalCode ? `<PostalCode>${escapeXml(h.postalCode)}</PostalCode>` : ""}
+<DispatchTimeMax>${escapeXml(h.dispatchDays)}</DispatchTimeMax>
+${pictures ? `<PictureDetails>${pictures}</PictureDetails>` : ""}
+${specifics ? `<ItemSpecifics>${specifics}</ItemSpecifics>` : ""}
+<ReturnPolicy><ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption><ReturnsWithinOption>${escapeXml(h.returnsWithin)}</ReturnsWithinOption><ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption></ReturnPolicy>
+<ShippingDetails><ShippingType>Flat</ShippingType><ShippingServiceOptions><ShippingServicePriority>1</ShippingServicePriority><ShippingService>${escapeXml(h.shippingService)}</ShippingService><ShippingServiceCost currencyID="GBP">${money(Number(h.shippingCostMinor) || 0)}</ShippingServiceCost></ShippingServiceOptions></ShippingDetails>
+</Item>`;
+  const res = await call(cfg, token, "AddFixedPriceItem", inner);
+  if (res.kind !== "ok") return res;
+  const failure = classify(res.value, "AddFixedPriceItem");
+  if (failure) return failure;
+  const itemId = tagText(res.value.xml, "ItemID");
+  if (!itemId)
+    return {
+      kind: "terminal",
+      code: "ebay.add_item.no_id",
+      messageForSeller: "eBay accepted the listing but returned no item id.",
+    };
+  return { kind: "ok", value: { itemId, fees: tagText(res.value.xml, "Fee") } };
+}

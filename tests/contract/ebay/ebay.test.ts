@@ -585,11 +585,8 @@ describe("eBay misc", () => {
     expect(calls[0].url).toBe("https://api.sandbox.ebay.com/sell/account/v1/privilege");
   });
 
-  it("createListing and updateListing are terminal not_implemented with a seller message", async () => {
+  it("updateListing is terminal not_implemented with a seller message", async () => {
     const { c } = connector({});
-    const created = await c.createListing(account, {});
-    expect(created.kind).toBe("terminal");
-    if (created.kind === "terminal") expect(created.code).toBe("ebay.not_implemented");
     const updated = await c.updateListing(account, inventoryListing, {});
     expect(updated.kind).toBe("terminal");
   });
@@ -599,5 +596,62 @@ describe("eBay misc", () => {
     expect(c.buildAuthorizeUrl({ workspaceId: "ws" as WorkspaceId, state: "s", redirectUri: "" }).origin).toBe(
       "https://auth.ebay.com",
     );
+  });
+});
+
+describe("eBay listing creation", () => {
+  const draft = {
+    sku: "MAS-0001",
+    title: "Nike Air Max 90 UK 9 white",
+    description: "<p>Worn twice, boxed.</p>",
+    priceMinor: 4500,
+    quantity: 1,
+    condition: "used_very_good",
+    photoUrls: ["https://example.com/p1.jpg"],
+    brand: "Nike",
+    attributes: { Size: "UK 9" },
+    channelHints: { ebay: { categoryId: "15709", postalCode: "E15 1AA" } },
+  };
+
+  it("AddFixedPriceItem sends a GTC fixed-price UK listing and returns the ItemID as a trading-model ref", async () => {
+    const { c, calls } = connector({ "POST /ws/api.dll": () => xml(fixture("add_fixed_price_item_ok.xml")) });
+    const res = await c.createListing(account, draft);
+    expect(res).toEqual({
+      kind: "ok",
+      value: { externalListingId: "110559999001", externalIds: { listingModel: "trading", sku: "MAS-0001" } },
+    });
+    const req = calls[0];
+    expect(req.headers["x-ebay-api-call-name"]).toBe("AddFixedPriceItem");
+    for (const s of [
+      "<SKU>MAS-0001</SKU>",
+      "<Title>Nike Air Max 90 UK 9 white</Title>",
+      "<CategoryID>15709</CategoryID>",
+      '<StartPrice currencyID="GBP">45.00</StartPrice>',
+      "<Quantity>1</Quantity>",
+      "<ConditionID>3000</ConditionID>",
+      "<ListingDuration>GTC</ListingDuration>",
+      "<Country>GB</Country>",
+      "<PostalCode>E15 1AA</PostalCode>",
+      "<PictureURL>https://example.com/p1.jpg</PictureURL>",
+      "<Name>Brand</Name><Value>Nike</Value>",
+      "<Name>Size</Name><Value>UK 9</Value>",
+      "<ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>",
+      "<ShippingService>UK_RoyalMailSecondClass</ShippingService>",
+    ])
+      expect(req.body).toContain(s);
+  });
+
+  it("surfaces eBay's own message when the listing is rejected", async () => {
+    const { c } = connector({ "POST /ws/api.dll": () => xml(fixture("add_fixed_price_item_failure.xml")) });
+    const res = await c.createListing(account, draft);
+    expect(res.kind).toBe("terminal");
+    if (res.kind === "terminal") expect(res.messageForSeller).toContain("leaf category");
+  });
+
+  it("rejects a draft eBay cannot accept before calling anything", async () => {
+    const { c, calls } = connector({});
+    const res = await c.createListing(account, { ...draft, title: "" });
+    expect(res.kind).toBe("terminal");
+    expect(calls).toHaveLength(0);
   });
 });
