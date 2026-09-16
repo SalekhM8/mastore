@@ -1,4 +1,4 @@
-import { type ChannelAccountRow, listAccountsForPull, loadAccountContext } from "@/db/channel-accounts";
+import { type ChannelAccountRow, listAccountsForPull } from "@/db/channel-accounts";
 import { db, json } from "@/db/client";
 import { listManagedListings, recordRemoteQuantity, toListingRef } from "@/db/listings";
 import { getConnectorSwitch, logActivity, raiseIncident } from "@/db/ops";
@@ -7,6 +7,7 @@ import type { Channel, NormalisedInbound } from "@/domain/channels/types";
 import { withContext } from "@/lib/log";
 import { inngest } from "./client";
 import { CHANNEL_LABEL, getConnector } from "./connectors";
+import { loadFreshAccount } from "./credentials";
 import { processInbound } from "./inbound";
 import { requestPushes } from "./push";
 
@@ -25,8 +26,8 @@ export async function pollOrdersForAccount(
   const channel = row.channel;
   const connector = getConnector(channel);
   if (!connector) return { skipped: "no_connector" };
-  const loaded = await loadAccountContext(row.id);
-  if (!loaded) return { skipped: "no_credentials" };
+  const loaded = await loadFreshAccount(channel, row.id);
+  if (!loaded.ok) return { skipped: loaded.reason };
   const log = withContext({ workspaceId: row.workspace_id, channel, channelAccountId: row.id });
 
   const lastPoll =
@@ -67,8 +68,8 @@ export async function reconcileListingsForAccount(
   const label = CHANNEL_LABEL[channel];
   const connector = getConnector(channel);
   if (!connector) return { skipped: "no_connector" };
-  const loaded = await loadAccountContext(row.id);
-  if (!loaded) return { skipped: "no_credentials" };
+  const loaded = await loadFreshAccount(channel, row.id);
+  if (!loaded.ok) return { skipped: loaded.reason };
   const log = withContext({ workspaceId: row.workspace_id, channel, channelAccountId: row.id });
 
   const listings = await listManagedListings(row.id);

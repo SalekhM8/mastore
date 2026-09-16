@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createProductWithSku, findSkuByCode, setImportStatus, upsertImportedListing } from "@/db/catalogue";
-import { type ChannelAccountRow, loadAccountContext } from "@/db/channel-accounts";
+import type { ChannelAccountRow } from "@/db/channel-accounts";
 import { applyLedgerEvent } from "@/db/ledger";
 import { skuLastEventSeq } from "@/db/listings";
 import { logActivity } from "@/db/ops";
@@ -9,6 +9,7 @@ import { inboundKey } from "@/domain/ledger/idempotency";
 import { withContext } from "@/lib/log";
 import { EVENTS, inngest } from "./client";
 import { CHANNEL_LABEL, getConnector } from "./connectors";
+import { loadFreshAccount } from "./credentials";
 
 /**
  * Listing import. Pages through a channel account's live listings and turns each into a product,
@@ -101,8 +102,14 @@ export async function runImport(row: ChannelAccountRow, maxPages = 200): Promise
   const log = withContext({ workspaceId: row.workspace_id, channel, channelAccountId: row.id });
   const connector = getConnector(channel);
   if (!connector) return { skipped: "no_connector" };
-  const loaded = await loadAccountContext(row.id);
-  if (!loaded) return { skipped: "no_credentials" };
+  const loaded = await loadFreshAccount(channel, row.id);
+  if (!loaded.ok) {
+    await setImportStatus(row.id, {
+      state: "failed",
+      error: loaded.reason === "refresh_failed" ? "eBay sign-in has expired. Reconnect the account." : loaded.reason,
+    });
+    return { skipped: loaded.reason };
+  }
 
   const startedAt = new Date().toISOString();
   await setImportStatus(row.id, { state: "running", started_at: startedAt, seen: 0 });

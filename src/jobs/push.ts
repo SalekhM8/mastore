@@ -1,5 +1,4 @@
-import type { AccountContext } from "@/connectors/contract";
-import { loadAccountContext, saveCredentials, setAccountStatus, touchAccount } from "@/db/channel-accounts";
+import { setAccountStatus, touchAccount } from "@/db/channel-accounts";
 import { db } from "@/db/client";
 import { getListing, recordPushApplied, setListingError, skuLastEventSeq, toListingRef } from "@/db/listings";
 import { getConnectorSwitch, logActivity, raiseIncident } from "@/db/ops";
@@ -9,6 +8,7 @@ import { decideTransition, isSuperseded } from "@/domain/push/retry";
 import { withContext } from "@/lib/log";
 import { EVENTS, inngest, PushRequestedData } from "./client";
 import { CHANNEL_LABEL, getConnector } from "./connectors";
+import { loadFreshAccount } from "./credentials";
 
 /**
  * Outbound push queue. One Inngest function per channel with its own concurrency and throttle,
@@ -21,23 +21,6 @@ export type PushOutcome =
   | { outcome: "succeeded" }
   | { outcome: "failed"; nextAttemptAt: string }
   | { outcome: "dead"; sideEffect: string };
-
-const REFRESH_AHEAD_MS = 5 * 60_000;
-
-async function freshCredentials(
-  channel: Channel,
-  account: AccountContext,
-  row: { id: string; workspace_id: string },
-): Promise<{ ok: true; account: AccountContext } | { ok: false; result: PushResult }> {
-  const exp = account.credentials.expiresAt ? Date.parse(account.credentials.expiresAt) : Number.POSITIVE_INFINITY;
-  if (exp - Date.now() > REFRESH_AHEAD_MS) return { ok: true, account };
-  const connector = getConnector(channel);
-  if (!connector) return { ok: false, result: { kind: "retryable", message: "connector unavailable" } };
-  const refreshed = await connector.refreshCredentials(account.credentials);
-  if (refreshed.kind !== "ok") return { ok: false, result: refreshed as PushResult };
-  await saveCredentials({ workspaceId: row.workspace_id, channelAccountId: row.id, bundle: refreshed.value });
-  return { ok: true, account: { ...account, credentials: refreshed.value } };
-}
 
 export async function runPushJob(
   channel: Channel,
@@ -80,8 +63,33 @@ export async function runPushJob(
     return { outcome: "superseded" };
   }
 
-  const loaded = await loadAccountContext(job.channel_account_id);
-  if (!loaded) {
+  const loaded = await loadFreshAccount(channel, job.channel_account_id);
+  if (!loaded.ok && loaded.reason === "refresh_failed" && loaded.result) {
+    // Treat a failed refresh exactly like the channel rejecting the call.
+    const transition = decideTransition(loaded.result, job.attempts, now());
+    await finishPushJob(jobId, transition);
+    if (transition.status === "dead" && transition.sideEffect === "account_auth_revoked") {
+      await raiseIncident({
+        workspaceId: job.workspace_id,
+        kind: "auth_revoked",
+        severity: 1,
+        channelAccountId: job.channel_account_id,
+        details: { job_id: jobId },
+      });
+      await logActivity({
+        workspaceId: job.workspace_id,
+        channelAccountId: job.channel_account_id,
+        level: "error",
+        message: `${CHANNEL_LABEL[channel]} has disconnected. Reconnect it to resume syncing.`,
+        context: { job_id: jobId },
+      });
+      return { outcome: "dead", sideEffect: "account_auth_revoked" };
+    }
+    return transition.status === "failed"
+      ? { outcome: "failed", nextAttemptAt: transition.nextAttemptAt.toISOString() }
+      : { outcome: "dead", sideEffect: "none" };
+  }
+  if (!loaded.ok) {
     await finishPushJob(jobId, {
       status: "dead",
       error: { kind: "auth_revoked", message: "No credentials stored for this account.", attempt: job.attempts },
@@ -93,26 +101,22 @@ export async function runPushJob(
 
   const started = Date.now();
   let result: PushResult<unknown>;
-  const fresh = await freshCredentials(channel, loaded.context, loaded.row);
-  if (!fresh.ok) {
-    result = fresh.result;
-  } else {
-    const ref = toListingRef(listing);
-    const quantity = job.desired.quantity ?? 0;
-    switch (job.kind) {
-      case "stock":
-      case "relist":
-        result = await connector.pushStock(fresh.account, ref, quantity);
-        break;
-      case "delist":
-        result = await connector.delist(fresh.account, ref);
-        break;
-      case "price":
-        result = await connector.pushPrice(fresh.account, ref, job.desired.price_minor ?? 0);
-        break;
-      default:
-        result = { kind: "terminal", code: "unsupported_job", messageForSeller: `${job.kind} is not supported yet.` };
-    }
+  const account = loaded.context;
+  const ref = toListingRef(listing);
+  const quantity = job.desired.quantity ?? 0;
+  switch (job.kind) {
+    case "stock":
+    case "relist":
+      result = await connector.pushStock(account, ref, quantity);
+      break;
+    case "delist":
+      result = await connector.delist(account, ref);
+      break;
+    case "price":
+      result = await connector.pushPrice(account, ref, job.desired.price_minor ?? 0);
+      break;
+    default:
+      result = { kind: "terminal", code: "unsupported_job", messageForSeller: `${job.kind} is not supported yet.` };
   }
   const durationMs = Date.now() - started;
   const transition = decideTransition(result, job.attempts, now());
