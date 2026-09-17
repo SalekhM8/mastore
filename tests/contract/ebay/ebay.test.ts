@@ -636,7 +636,7 @@ describe("eBay listing creation", () => {
       "<Name>Brand</Name><Value>Nike</Value>",
       "<Name>Size</Name><Value>UK 9</Value>",
       "<ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption>",
-      "<ShippingService>UK_RoyalMailSecondClass</ShippingService>",
+      "<ShippingService>UK_RoyalMailSecondClassStandard</ShippingService>",
     ])
       expect(req.body).toContain(s);
   });

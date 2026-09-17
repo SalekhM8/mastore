@@ -249,7 +249,7 @@ const DEFAULTS = {
   location: "United Kingdom",
   postalCode: "",
   dispatchDays: "3",
-  shippingService: "UK_RoyalMailSecondClass",
+  shippingService: "UK_RoyalMailSecondClassStandard",
   shippingCostMinor: "0",
   returnsWithin: "Days_30",
 };
