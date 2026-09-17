@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GetOrdersResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+  <Timestamp>2026-09-17T16:40:00.000Z</Timestamp>
+  <Ack>Success</Ack>
+  <Version>1271</Version>
+  <PaginationResult><TotalNumberOfPages>1</TotalNumberOfPages><TotalNumberOfEntries>2</TotalNumberOfEntries></PaginationResult>
+  <HasMoreOrders>false</HasMoreOrders>
+  <OrderArray>
+    <Order>
+      <OrderID>110590712425-10000013427610</OrderID>
+      <OrderStatus>Active</OrderStatus>
+      <CreatedTime>2026-09-17T16:31:22.000Z</CreatedTime>
+      <CheckoutStatus><eBayPaymentStatus>NoPaymentFailure</eBayPaymentStatus><LastModifiedTime>2026-09-17T16:31:22.000Z</LastModifiedTime><PaymentMethod>None</PaymentMethod><Status>Incomplete</Status></CheckoutStatus>
+      <TransactionArray>
+        <Transaction>
+          <Item><ItemID>110590712425</ItemID><Title>nike air max air</Title></Item>
+          <QuantityPurchased>1</QuantityPurchased>
+          <TransactionID>10000013427610</TransactionID>
+          <TransactionPrice currencyID="GBP">45.0</TransactionPrice>
+          <CreatedDate>2026-09-17T16:31:22.000Z</CreatedDate>
+          <OrderLineItemID>110590712425-10000013427610</OrderLineItemID>
+        </Transaction>
+      </TransactionArray>
+    </Order>
+    <Order>
+      <OrderID>110590712426-10000013427611</OrderID>
+      <OrderStatus>Cancelled</OrderStatus>
+      <CreatedTime>2026-09-16T10:00:00.000Z</CreatedTime>
+      <CheckoutStatus><Status>Complete</Status><LastModifiedTime>2026-09-17T09:00:00.000Z</LastModifiedTime></CheckoutStatus>
+      <TransactionArray>
+        <Transaction>
+          <Item><ItemID>110590712426</ItemID></Item>
+          <QuantityPurchased>2</QuantityPurchased>
+          <TransactionID>10000013427611</TransactionID>
+          <TransactionPrice currencyID="GBP">12.0</TransactionPrice>
+          <CreatedDate>2026-09-16T10:00:00.000Z</CreatedDate>
+          <OrderLineItemID>110590712426-10000013427611</OrderLineItemID>
+        </Transaction>
+      </TransactionArray>
+    </Order>
+  </OrderArray>
+</GetOrdersResponse>

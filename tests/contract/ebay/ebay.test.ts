@@ -412,40 +412,45 @@ describe("eBay listing reads", () => {
 });
 
 describe("eBay orders", () => {
-  it("pullOrders filters by lastmodifieddate and maps sales and cancellations in pence", async () => {
-    const { c, calls } = connector({ "GET /sell/fulfillment/v1/order?": () => json(fixture("orders.json")) });
-    const res = await c.pullOrders(account, "2026-09-10T00:00:00.000Z");
+  it("pullOrders uses Trading GetOrders so unpaid orders count, and maps sales and cancellations in pence", async () => {
+    const { c, calls } = connector({ "POST /ws/api.dll": () => xml(fixture("get_orders.xml")) });
+    const res = await c.pullOrders(account, "2026-09-16T00:00:00.000Z");
     expect(res.kind).toBe("ok");
     if (res.kind !== "ok") return;
-    expect(decodeURIComponent(calls[0].url)).toContain("filter=lastmodifieddate:[2026-09-10T00:00:00.000Z..]");
-    expect(calls[0].url).toContain("limit=50&offset=0");
+    expect(calls[0].headers["x-ebay-api-call-name"]).toBe("GetOrders");
+    expect(calls[0].body).toContain("<ModTimeFrom>2026-09-16T00:00:00.000Z</ModTimeFrom>");
+    expect(calls[0].body).toContain("<OrderStatus>All</OrderStatus>");
+    expect(calls[0].body).toContain("<PageNumber>1</PageNumber>");
     expect(res.value.items).toEqual([
       {
         type: "sale",
-        externalOrderId: "12-34567-89012",
-        externalLineId: "10045678901234",
-        externalListingId: "110556789012",
-        quantity: 2,
-        unitPrice: { amountMinor: 2499, currency: "GBP" },
-        occurredAt: "2026-09-10T14:03:11.000Z",
+        externalOrderId: "110590712425-10000013427610",
+        externalLineId: "110590712425-10000013427610",
+        externalListingId: "110590712425",
+        quantity: 1,
+        unitPrice: { amountMinor: 4500, currency: "GBP" },
+        occurredAt: "2026-09-17T16:31:22.000Z",
       },
       {
         type: "cancellation",
-        externalOrderId: "12-34567-89013",
-        externalLineId: "10045678901235",
-        quantity: 1,
-        occurredAt: "2026-09-10T15:00:00.000Z",
+        externalOrderId: "110590712426-10000013427611",
+        externalLineId: "110590712426-10000013427611",
+        quantity: 2,
+        occurredAt: "2026-09-17T09:00:00.000Z",
       },
     ]);
     expect(res.value.nextCursor).toBeUndefined();
   });
 
-  it("pullOrders returns an offset cursor while more pages remain", async () => {
-    const page = JSON.parse(fixture("orders.json"));
-    page.total = 120;
-    const { c } = connector({ "GET /sell/fulfillment/v1/order?": () => json(JSON.stringify(page)) });
-    const res = await c.pullOrders(account, "2026-09-10T00:00:00.000Z", "50");
-    expect(res.kind === "ok" && res.value.nextCursor).toBe("52");
+  it("pullOrders returns the next page number while eBay reports more orders", async () => {
+    const more = fixture("get_orders.xml").replace(
+      "<HasMoreOrders>false</HasMoreOrders>",
+      "<HasMoreOrders>true</HasMoreOrders>",
+    );
+    const { c, calls } = connector({ "POST /ws/api.dll": () => xml(more) });
+    const res = await c.pullOrders(account, "2026-09-16T00:00:00.000Z", "3");
+    expect(calls[0].body).toContain("<PageNumber>3</PageNumber>");
+    expect(res.kind === "ok" && res.value.nextCursor).toBe("4");
   });
 
   it("pullOrder fetches one order by id when a notification carries no line items", async () => {

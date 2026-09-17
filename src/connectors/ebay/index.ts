@@ -237,8 +237,9 @@ export class EbayConnector implements ChannelConnector {
     return fulfillment.getOrder(this.cfg, account.credentials.accessToken, orderId);
   }
 
+  /** Trading GetOrders rather than the Fulfillment API: it includes unpaid orders, which already hold stock on eBay. */
   pullOrders(account: AccountContext, sinceIso: string, cursor?: string): Promise<PushResult<Page<NormalisedInbound>>> {
-    return fulfillment.pullOrders(this.cfg, account.credentials.accessToken, sinceIso, cursor);
+    return trading.getOrders(this.cfg, account.credentials.accessToken, sinceIso, cursor);
   }
 
   async pullListingQuantities(

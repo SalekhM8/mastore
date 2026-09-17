@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { PushResult, RemoteListing } from "@/domain/channels/types";
+import type { NormalisedInbound, PushResult, RemoteListing } from "@/domain/channels/types";
 import { type EbayConfig, endpoints, TRADING_COMPAT_LEVEL, UK_SITE_ID } from "./config";
 import { type Exchange, exchange, type Failure, retryAfterMs } from "./http";
 import { toMinor } from "./schemas";
@@ -320,4 +320,66 @@ ${h.postalCode ? `<PostalCode>${escapeXml(h.postalCode)}</PostalCode>` : ""}
       messageForSeller: "eBay accepted the listing but returned no item id.",
     };
   return { kind: "ok", value: { itemId, fees: tagText(res.value.xml, "Fee") } };
+}
+
+/**
+ * GetOrders: every order touched since a point in time, paid or not. eBay reduces the listing's
+ * quantity the moment a buyer commits, so an unpaid order is already a sale for stock purposes.
+ * Cancelled orders yield cancellations. Cursor is the page number.
+ */
+export async function getOrders(
+  cfg: EbayConfig,
+  token: string,
+  modifiedSinceIso: string,
+  cursor?: string,
+): Promise<PushResult<{ items: NormalisedInbound[]; nextCursor?: string }>> {
+  const page = cursor ? Math.max(1, Number(cursor) || 1) : 1;
+  const now = cfg.now ? cfg.now() : new Date();
+  // eBay requires the window to be at most 30 days and the end to be no later than now.
+  const from = new Date(Math.max(Date.parse(modifiedSinceIso), now.getTime() - 29 * 24 * 3600_000));
+  const inner = `<ModTimeFrom>${from.toISOString()}</ModTimeFrom><ModTimeTo>${now.toISOString()}</ModTimeTo><OrderRole>Seller</OrderRole><OrderStatus>All</OrderStatus><Pagination><EntriesPerPage>100</EntriesPerPage><PageNumber>${page}</PageNumber></Pagination>`;
+  const res = await call(cfg, token, "GetOrders", inner);
+  if (res.kind !== "ok") return res;
+  const failure = classify(res.value, "GetOrders");
+  if (failure) return failure;
+  const items: NormalisedInbound[] = [];
+  for (const order of tagBlocks(res.value.xml, "Order")) {
+    const orderId = tagText(order, "OrderID");
+    const status = tagText(order, "OrderStatus") ?? "Active";
+    const created = tagText(order, "CreatedTime") ?? now.toISOString();
+    const modified = tagText(order, "CheckoutStatus")
+      ? (tagText(tagBlocks(order, "CheckoutStatus")[0] ?? "", "LastModifiedTime") ?? created)
+      : created;
+    if (!orderId) continue;
+    const cancelled = status === "Cancelled" || tagText(order, "CancelStatus") === "CancelComplete";
+    if (status === "Inactive") continue; // abandoned checkout, never counted by eBay
+    for (const tx of tagBlocks(order, "Transaction")) {
+      const lineId = tagText(tx, "OrderLineItemID") ?? tagText(tx, "TransactionID");
+      const itemId = tagText(tagBlocks(tx, "Item")[0] ?? "", "ItemID");
+      const quantity = Number(tagText(tx, "QuantityPurchased") ?? "1") || 1;
+      if (!lineId || !itemId) continue;
+      if (cancelled) {
+        items.push({
+          type: "cancellation",
+          externalOrderId: orderId,
+          externalLineId: lineId,
+          quantity,
+          occurredAt: modified,
+        });
+      } else {
+        const price = tagText(tx, "TransactionPrice") ?? "0";
+        items.push({
+          type: "sale",
+          externalOrderId: orderId,
+          externalLineId: lineId,
+          externalListingId: itemId,
+          quantity,
+          unitPrice: { amountMinor: toMinor(price), currency: "GBP" },
+          occurredAt: tagText(tx, "CreatedDate") ?? created,
+        });
+      }
+    }
+  }
+  const more = tagText(res.value.xml, "HasMoreOrders") === "true";
+  return { kind: "ok", value: { items, ...(more ? { nextCursor: String(page + 1) } : {}) } };
 }
