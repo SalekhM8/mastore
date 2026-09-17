@@ -285,25 +285,28 @@ export async function addFixedPriceItem(
     .map(([n, v]) => `<NameValueList><Name>${escapeXml(n)}</Name><Value>${escapeXml(v)}</Value></NameValueList>`)
     .join("");
   const pictures = item.photoUrls.map((u) => `<PictureURL>${escapeXml(u)}</PictureURL>`).join("");
+  // Element order follows eBay's AddFixedPriceItem sample. The Trading API validates sequence.
   const inner = `<Item>
-<SKU>${escapeXml(item.sku)}</SKU>
 <Title>${escapeXml(item.title.slice(0, 80))}</Title>
 <Description><![CDATA[${item.description}]]></Description>
 <PrimaryCategory><CategoryID>${escapeXml(h.categoryId)}</CategoryID></PrimaryCategory>
 <StartPrice currencyID="GBP">${money(item.priceMinor)}</StartPrice>
-<Quantity>${Math.max(1, Math.floor(item.quantity))}</Quantity>
+<CategoryMappingAllowed>true</CategoryMappingAllowed>
 <ConditionID>${CONDITION_ID[item.condition] ?? "3000"}</ConditionID>
-<ListingType>FixedPriceItem</ListingType>
-<ListingDuration>GTC</ListingDuration>
 <Country>GB</Country>
 <Currency>GBP</Currency>
-<Location>${escapeXml(h.location)}</Location>
-${h.postalCode ? `<PostalCode>${escapeXml(h.postalCode)}</PostalCode>` : ""}
 <DispatchTimeMax>${escapeXml(h.dispatchDays)}</DispatchTimeMax>
-${pictures ? `<PictureDetails>${pictures}</PictureDetails>` : ""}
 ${specifics ? `<ItemSpecifics>${specifics}</ItemSpecifics>` : ""}
+<ListingDuration>GTC</ListingDuration>
+<ListingType>FixedPriceItem</ListingType>
+<Location>${escapeXml(h.location)}</Location>
+${pictures ? `<PictureDetails>${pictures}</PictureDetails>` : ""}
+${h.postalCode ? `<PostalCode>${escapeXml(h.postalCode)}</PostalCode>` : ""}
+<Quantity>${Math.max(1, Math.floor(item.quantity))}</Quantity>
 <ReturnPolicy><ReturnsAcceptedOption>ReturnsAccepted</ReturnsAcceptedOption><ReturnsWithinOption>${escapeXml(h.returnsWithin)}</ReturnsWithinOption><ShippingCostPaidByOption>Buyer</ShippingCostPaidByOption></ReturnPolicy>
-<ShippingDetails><ShippingType>Flat</ShippingType><ShippingServiceOptions><ShippingServicePriority>1</ShippingServicePriority><ShippingService>${escapeXml(h.shippingService)}</ShippingService><ShippingServiceCost currencyID="GBP">${money(Number(h.shippingCostMinor) || 0)}</ShippingServiceCost></ShippingServiceOptions></ShippingDetails>
+<ShippingDetails><ShippingServiceOptions><ShippingService>${escapeXml(h.shippingService)}</ShippingService><ShippingServiceCost currencyID="GBP">${money(Number(h.shippingCostMinor) || 0)}</ShippingServiceCost><ShippingServicePriority>1</ShippingServicePriority></ShippingServiceOptions><ShippingType>Flat</ShippingType></ShippingDetails>
+<Site>UK</Site>
+<SKU>${escapeXml(item.sku)}</SKU>
 </Item>`;
   const res = await call(cfg, token, "AddFixedPriceItem", inner);
   if (res.kind !== "ok") return res;
