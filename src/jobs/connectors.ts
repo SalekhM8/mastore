@@ -28,6 +28,7 @@ export function getConnector(channel: Channel): ChannelConnector | null {
           ? { deletionVerificationToken: e.EBAY_DELETION_VERIFICATION_TOKEN }
           : {}),
         webhookEndpointUrl: `${e.APP_URL}/api/webhooks/ebay`,
+        ...(e.EBAY_DEV_ID ? { devId: e.EBAY_DEV_ID } : {}),
       });
       return ebay;
     }

@@ -191,3 +191,69 @@ export function parseInbound(payload: unknown, topic: string): readonly Normalis
     occurredAt,
   }));
 }
+
+/**
+ * Platform Notifications arrive as SOAP XML. eBay signs them with
+ * base64(md5(Timestamp + DevID + AppID + CertID)); the seller is RecipientUserID.
+ */
+export function isPlatformNotification(rawBody: string): boolean {
+  return /<(soapenv|soap):Envelope/i.test(rawBody) && /<NotificationEventName>/.test(rawBody);
+}
+
+function tag(xml: string, name: string): string | undefined {
+  const m = xml.match(new RegExp(`<(?:[a-zA-Z0-9]+:)?${name}[^>]*>([^<]*)</(?:[a-zA-Z0-9]+:)?${name}>`));
+  return m?.[1];
+}
+function blocks(xml: string, name: string): string[] {
+  return xml.match(new RegExp(`<(?:[a-zA-Z0-9]+:)?${name}[^>]*>[\\s\\S]*?</(?:[a-zA-Z0-9]+:)?${name}>`, "g")) ?? [];
+}
+
+export function verifyPlatformNotification(
+  rawBody: string,
+  keys: { devId: string; appId: string; certId: string },
+): WebhookVerification {
+  const timestamp = tag(rawBody, "Timestamp") ?? "";
+  const signature = tag(rawBody, "NotificationSignature") ?? "";
+  const event = tag(rawBody, "NotificationEventName") ?? "unknown";
+  const recipient = tag(rawBody, "RecipientUserID");
+  const correlation = tag(rawBody, "CorrelationID");
+  const expected = createHash("md5")
+    .update(timestamp)
+    .update(keys.devId)
+    .update(keys.appId)
+    .update(keys.certId)
+    .digest("base64");
+  const valid = signature.length > 0 && signature === expected;
+  const externalEventId = correlation ?? `platform:${createHash("sha256").update(rawBody).digest("hex")}`;
+  return { valid, externalEventId, topic: `platform:${event}`, ...(recipient ? { externalAccountId: recipient } : {}) };
+}
+
+/** Sale and listing events out of a Platform Notification body. */
+export function parsePlatformNotification(rawBody: string, topic: string): readonly NormalisedInbound[] {
+  const event = topic.replace(/^platform:/, "");
+  const itemId = tag(blocks(rawBody, "Item")[0] ?? rawBody, "ItemID") ?? tag(rawBody, "ItemID");
+  if (!itemId) return [];
+  const occurredAt = tag(rawBody, "Timestamp") ?? new Date().toISOString();
+  if (event === "ItemClosed")
+    return [{ type: "listing_changed", externalListingId: itemId, status: "ended", occurredAt }];
+  if (event === "ItemRevised") return [{ type: "listing_changed", externalListingId: itemId, occurredAt }];
+  if (event !== "FixedPriceTransaction" && event !== "AuctionCheckoutComplete" && event !== "ItemSold") return [];
+  const out: NormalisedInbound[] = [];
+  for (const tx of blocks(rawBody, "Transaction")) {
+    const lineId = tag(tx, "OrderLineItemID") ?? tag(tx, "TransactionID");
+    if (!lineId) continue;
+    const quantity = Number(tag(tx, "QuantityPurchased") ?? "1") || 1;
+    const price = tag(tx, "TransactionPrice") ?? "0";
+    const orderId = tag(blocks(tx, "ContainingOrder")[0] ?? "", "OrderID") ?? lineId;
+    out.push({
+      type: "sale",
+      externalOrderId: orderId,
+      externalLineId: lineId,
+      externalListingId: itemId,
+      quantity,
+      unitPrice: { amountMinor: toMinor(price), currency: "GBP" },
+      occurredAt: tag(tx, "CreatedDate") ?? occurredAt,
+    });
+  }
+  return out;
+}

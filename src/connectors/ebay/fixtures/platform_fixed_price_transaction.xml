@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Header>
+    <ebl:RequesterCredentials soapenv:mustUnderstand="0" xmlns:ns="urn:ebay:apis:eBLBaseComponents" xmlns:ebl="urn:ebay:apis:eBLBaseComponents">
+      <ebl:NotificationSignature xmlns:ebl="urn:ebay:apis:eBLBaseComponents">SIGNATURE_PLACEHOLDER</ebl:NotificationSignature>
+    </ebl:RequesterCredentials>
+  </soapenv:Header>
+  <soapenv:Body>
+    <GetItemTransactionsResponse xmlns="urn:ebay:apis:eBLBaseComponents">
+      <Timestamp>2026-09-18T15:02:11.000Z</Timestamp>
+      <Ack>Success</Ack>
+      <CorrelationID>1234567890abcdef</CorrelationID>
+      <Version>1271</Version>
+      <NotificationEventName>FixedPriceTransaction</NotificationEventName>
+      <RecipientUserID>testuser_salekh2</RecipientUserID>
+      <EIASToken>nY+sHZ2PrBmdj6wVnY+sEZ2PrA2dj6wFk4GgAZaBog==</EIASToken>
+      <Item>
+        <ItemID>110590712425</ItemID>
+        <Title>nike air max air</Title>
+        <SellingStatus><QuantitySold>1</QuantitySold></SellingStatus>
+      </Item>
+      <TransactionArray>
+        <Transaction>
+          <AmountPaid currencyID="GBP">45.0</AmountPaid>
+          <Buyer><UserID>testuser_buyer1</UserID></Buyer>
+          <CreatedDate>2026-09-18T15:02:09.000Z</CreatedDate>
+          <QuantityPurchased>1</QuantityPurchased>
+          <TransactionID>10000013427999</TransactionID>
+          <TransactionPrice currencyID="GBP">45.0</TransactionPrice>
+          <ContainingOrder><OrderID>110590712425-10000013427999</OrderID></ContainingOrder>
+          <OrderLineItemID>110590712425-10000013427999</OrderLineItemID>
+        </Transaction>
+      </TransactionArray>
+    </GetItemTransactionsResponse>
+  </soapenv:Body>
+</soapenv:Envelope>

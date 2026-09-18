@@ -16,7 +16,13 @@ import { type EbayConfig, UK_MARKETPLACE_ID } from "./config";
 import * as fulfillment from "./fulfillment";
 import { apiUrl, exchange, restHeaders } from "./http";
 import * as inventory from "./inventory";
-import { NotificationVerifier, parseInbound } from "./notifications";
+import {
+  isPlatformNotification,
+  NotificationVerifier,
+  parseInbound,
+  parsePlatformNotification,
+  verifyPlatformNotification,
+} from "./notifications";
 import * as trading from "./trading";
 
 export type { EbayConfig } from "./config";
@@ -224,11 +230,36 @@ export class EbayConnector implements ChannelConnector {
     return offerId ? inventory.withdrawOffer(this.cfg, token, offerId) : Promise.resolve(MISSING_OFFER);
   }
 
-  verifyWebhook(request: RawWebhookRequest): Promise<WebhookVerification> {
+  async verifyWebhook(request: RawWebhookRequest): Promise<WebhookVerification> {
+    if (isPlatformNotification(request.rawBody)) {
+      if (!this.cfg.devId) return { valid: false, externalEventId: "platform:unverifiable", topic: "platform:unknown" };
+      return verifyPlatformNotification(request.rawBody, {
+        devId: this.cfg.devId,
+        appId: this.cfg.clientId,
+        certId: this.cfg.clientSecret,
+      });
+    }
     return this.verifier.verify(request);
   }
 
+  /** Turn on eBay's per-seller sale and listing notifications for this account. Idempotent. */
+  subscribeSellerEvents(account: AccountContext): Promise<PushResult> {
+    if (!this.cfg.webhookEndpointUrl)
+      return Promise.resolve({
+        kind: "terminal",
+        code: "ebay.no_endpoint",
+        messageForSeller: "Notifications are not configured.",
+      });
+    return trading.setNotificationPreferences(
+      this.cfg,
+      account.credentials.accessToken,
+      this.cfg.webhookEndpointUrl,
+      this.cfg.alertEmail,
+    );
+  }
+
   async parseInbound(payload: unknown, topic: string): Promise<readonly NormalisedInbound[]> {
+    if (topic.startsWith("platform:") && typeof payload === "string") return parsePlatformNotification(payload, topic);
     return parseInbound(payload, topic);
   }
 

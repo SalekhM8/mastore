@@ -10,6 +10,10 @@ export interface EbayConfig {
   readonly env: "sandbox" | "production";
   /** Marketplace account deletion challenge: the token we registered with eBay. */
   readonly deletionVerificationToken?: string;
+  /** Dev ID from the keyset. Needed to verify Platform Notification signatures. */
+  readonly devId?: string;
+  /** Where eBay should send Platform Notification alerts about delivery failures. */
+  readonly alertEmail?: string;
   /** The exact public URL eBay calls, used in the challenge hash. */
   readonly webhookEndpointUrl?: string;
   /** Injected for tests. Defaults to global fetch. */

@@ -660,3 +660,70 @@ describe("eBay listing creation", () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe("eBay Platform Notifications", () => {
+  const keys = { devId: "dev-1", appId: "SalekhVe-Mastore-SBX-app", certId: "SBX-cert" };
+  function signed(): string {
+    const body = fixture("platform_fixed_price_transaction.xml");
+    const ts = "2026-09-18T15:02:11.000Z";
+    const sig = createHash("md5").update(ts).update(keys.devId).update(keys.appId).update(keys.certId).digest("base64");
+    return body.replace("SIGNATURE_PLACEHOLDER", sig);
+  }
+
+  it("subscribeSellerEvents sends SetNotificationPreferences with the endpoint and sale events", async () => {
+    const { c, calls } = connector(
+      {
+        "POST /ws/api.dll": () =>
+          xml(
+            '<?xml version="1.0"?><SetNotificationPreferencesResponse><Ack>Success</Ack></SetNotificationPreferencesResponse>',
+          ),
+      },
+      { webhookEndpointUrl: "https://mastorehq.com/api/webhooks/ebay" },
+    );
+    const res = await c.subscribeSellerEvents(account);
+    expect(res).toEqual({ kind: "ok", value: undefined });
+    expect(calls[0].headers["x-ebay-api-call-name"]).toBe("SetNotificationPreferences");
+    expect(calls[0].body).toContain("<ApplicationURL>https://mastorehq.com/api/webhooks/ebay</ApplicationURL>");
+    expect(calls[0].body).toContain("<EventType>FixedPriceTransaction</EventType>");
+    expect(calls[0].body).toContain("<EventType>ItemClosed</EventType>");
+  });
+
+  it("verifies the MD5 signature and routes by the seller in RecipientUserID", async () => {
+    const { c } = connector({}, { devId: keys.devId, clientId: keys.appId, clientSecret: keys.certId });
+    const v = await c.verifyWebhook({ headers: {}, rawBody: signed(), url: "" });
+    expect(v).toEqual({
+      valid: true,
+      externalEventId: "1234567890abcdef",
+      topic: "platform:FixedPriceTransaction",
+      externalAccountId: "testuser_salekh2",
+    });
+  });
+
+  it("rejects a tampered platform notification", async () => {
+    const { c } = connector({}, { devId: keys.devId, clientId: keys.appId, clientSecret: keys.certId });
+    const v = await c.verifyWebhook({
+      headers: {},
+      rawBody: signed()
+        .replace("<QuantityPurchased>1", "<QuantityPurchased>5")
+        .replace(/<Timestamp>[^<]+/, "<Timestamp>2026-09-18T15:03:00.000Z"),
+      url: "",
+    });
+    expect(v.valid).toBe(false);
+  });
+
+  it("maps a FixedPriceTransaction body to a sale in pence", async () => {
+    const { c } = connector({}, { devId: keys.devId });
+    const items = await c.parseInbound(signed(), "platform:FixedPriceTransaction");
+    expect(items).toEqual([
+      {
+        type: "sale",
+        externalOrderId: "110590712425-10000013427999",
+        externalLineId: "110590712425-10000013427999",
+        externalListingId: "110590712425",
+        quantity: 1,
+        unitPrice: { amountMinor: 4500, currency: "GBP" },
+        occurredAt: "2026-09-18T15:02:09.000Z",
+      },
+    ]);
+  });
+});

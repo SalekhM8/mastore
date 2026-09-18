@@ -55,8 +55,8 @@ export async function processWebhookReceipt(receiptId: string): Promise<{ status
   try {
     payload = JSON.parse(receipt.body);
   } catch {
-    await updateWebhookReceipt(receiptId, { status: "failed", error: { reason: "body_not_json" } });
-    return { status: "failed", detail: "body_not_json" };
+    // XML bodies (eBay Platform Notifications) are handed to the connector as text.
+    payload = receipt.body;
   }
 
   // eBay programme requirement: record account deletion requests. Execution is a separate job.

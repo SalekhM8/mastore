@@ -71,6 +71,8 @@ export interface ChannelConnector {
   delist(account: AccountContext, listing: ListingRef): Promise<PushResult>;
 
   verifyWebhook(request: RawWebhookRequest): Promise<WebhookVerification>;
+  /** Channels that push per-seller events only after being asked (eBay Platform Notifications). */
+  subscribeSellerEvents?(account: AccountContext): Promise<PushResult>;
   parseInbound(payload: unknown, topic: string): Promise<readonly NormalisedInbound[]>;
   pullOrders(account: AccountContext, sinceIso: string, cursor?: string): Promise<PushResult<Page<NormalisedInbound>>>;
   pullListingQuantities(

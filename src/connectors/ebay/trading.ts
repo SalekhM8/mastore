@@ -383,3 +383,26 @@ export async function getOrders(
   const more = tagText(res.value.xml, "HasMoreOrders") === "true";
   return { kind: "ok", value: { items, ...(more ? { nextCursor: String(page + 1) } : {}) } };
 }
+
+/**
+ * Platform Notifications: eBay's per-seller push for sales and listing changes. The modern
+ * Notification API has no new-order topic for third-party apps, so this is how a sale reaches us
+ * within seconds. Idempotent: calling it again re-asserts the same preferences.
+ */
+export async function setNotificationPreferences(
+  cfg: EbayConfig,
+  token: string,
+  applicationUrl: string,
+  alertEmail?: string,
+): Promise<PushResult> {
+  const events = ["FixedPriceTransaction", "AuctionCheckoutComplete", "ItemSold", "ItemClosed", "ItemRevised"];
+  const prefs = events
+    .map((e) => `<NotificationEnable><EventType>${e}</EventType><EventEnable>Enable</EventEnable></NotificationEnable>`)
+    .join("");
+  const inner = `<ApplicationDeliveryPreferences><ApplicationEnable>Enable</ApplicationEnable><ApplicationURL>${escapeXml(applicationUrl)}</ApplicationURL><DeviceType>Platform</DeviceType>${alertEmail ? `<AlertEnable>Enable</AlertEnable><AlertEmail>mailto://${escapeXml(alertEmail)}</AlertEmail>` : ""}</ApplicationDeliveryPreferences><UserDeliveryPreferenceArray>${prefs}</UserDeliveryPreferenceArray>`;
+  const res = await call(cfg, token, "SetNotificationPreferences", inner);
+  if (res.kind !== "ok") return res;
+  const failure = classify(res.value, "SetNotificationPreferences");
+  if (failure) return failure;
+  return { kind: "ok", value: undefined };
+}

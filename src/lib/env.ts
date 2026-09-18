@@ -17,6 +17,7 @@ const serverSchema = z.object({
   EBAY_CLIENT_ID: z.string().optional(),
   EBAY_CLIENT_SECRET: z.string().optional(),
   EBAY_RUNAME: z.string().optional(),
+  EBAY_DEV_ID: z.string().optional(),
   EBAY_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   EBAY_DELETION_VERIFICATION_TOKEN: z.string().min(32).max(80).optional(),
   APP_URL: z.string().url().default("http://localhost:3000"),

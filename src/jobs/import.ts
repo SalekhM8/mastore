@@ -113,6 +113,10 @@ export async function runImport(row: ChannelAccountRow, maxPages = 200): Promise
 
   const startedAt = new Date().toISOString();
   await setImportStatus(row.id, { state: "running", started_at: startedAt, seen: 0 });
+  if (connector.subscribeSellerEvents) {
+    const sub = await connector.subscribeSellerEvents(loaded.context);
+    log.info({ result: sub.kind }, "seller event subscription");
+  }
   const total: ImportSummary = { pages: 0, seen: 0, created: 0, linked: 0, baselined: 0, skipped: 0 };
   let cursor: string | undefined;
   try {
