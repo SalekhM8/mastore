@@ -1,7 +1,7 @@
+import Link from "next/link";
+import { Logo } from "@/components/brand/Logo";
+import { Button, inputClass, labelClass, Notice } from "@/components/ui";
 import { sendMagicLink, signInWithPassword } from "./actions";
-
-const input = "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
-const button = "mt-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black";
 
 export default async function LoginPage(props: PageProps<"/login">) {
   const sp = await props.searchParams;
@@ -10,68 +10,82 @@ export default async function LoginPage(props: PageProps<"/login">) {
   const next = typeof sp.next === "string" ? sp.next : "/app";
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in to Mastore</h1>
-      {error ? (
-        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-100">{error}</p>
-      ) : null}
-
-      {sent ? (
-        <div className="mt-6 rounded-md border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100">
-          Check your inbox and click the link. It is valid for one hour.
+    <main className="naval-scene flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex justify-center">
+          <Link href="/">
+            <Logo size={26} tone="optical" />
+          </Link>
         </div>
-      ) : (
-        <form action={sendMagicLink} className="mt-6 flex flex-col gap-3">
-          <input type="hidden" name="next" value={next} />
-          <label className="text-sm font-medium" htmlFor="email">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className={input}
-            placeholder="you@shop.co.uk"
-          />
-          <button type="submit" className={button}>
-            Email me a sign-in link
-          </button>
-        </form>
-      )}
+        <div className="glass-dark p-7 text-bone">
+          <div className="eyebrow text-structural">The commerce headquarters</div>
+          <h1 className="font-display mt-2 text-4xl text-optical">Sign in</h1>
+          {error ? (
+            <div className="mt-4">
+              <Notice kind="error">{error}</Notice>
+            </div>
+          ) : null}
 
-      <div className="my-8 flex items-center gap-3 text-xs uppercase tracking-wide text-zinc-400">
-        <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
-        or
-        <span className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          {sent ? (
+            <p className="mt-6 rounded-xl border border-structural/40 bg-structural/15 px-4 py-3 text-sm text-structural-200">
+              Check your inbox and click the link. It is valid for one hour.
+            </p>
+          ) : (
+            <form action={sendMagicLink} className="mt-6 flex flex-col gap-3">
+              <input type="hidden" name="next" value={next} />
+              <label className="text-sm font-medium text-bone" htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                className={inputClass}
+                placeholder="you@shop.co.uk"
+              />
+              <Button type="submit" className="mt-1">
+                Email me a sign-in link
+              </Button>
+            </form>
+          )}
+
+          <div className="my-7 flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-bone/50">
+            <span className="h-px flex-1 bg-white/15" />
+            or
+            <span className="h-px flex-1 bg-white/15" />
+          </div>
+
+          <form action={signInWithPassword} className="flex flex-col gap-3">
+            <input type="hidden" name="next" value={next} />
+            <label className="text-sm font-medium text-bone" htmlFor="pw-email">
+              Email
+            </label>
+            <input id="pw-email" name="email" type="email" required autoComplete="email" className={inputClass} />
+            <label className="text-sm font-medium text-bone" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="current-password"
+              className={inputClass}
+            />
+            <Button type="submit" tone="ghost" className="mt-1">
+              Sign in with password
+            </Button>
+          </form>
+        </div>
+        <p className="mt-6 text-center text-xs text-bone/50">
+          <span className={labelClass} style={{ color: "inherit" }}>
+            See the whole market. Move first.
+          </span>
+        </p>
       </div>
-
-      <form action={signInWithPassword} className="flex flex-col gap-3">
-        <input type="hidden" name="next" value={next} />
-        <label className="text-sm font-medium" htmlFor="pw-email">
-          Email
-        </label>
-        <input id="pw-email" name="email" type="email" required autoComplete="email" className={input} />
-        <label className="text-sm font-medium" htmlFor="password">
-          Password
-        </label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="current-password"
-          className={input}
-        />
-        <button
-          type="submit"
-          className="mt-2 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium dark:border-zinc-700"
-        >
-          Sign in with password
-        </button>
-      </form>
     </main>
   );
 }

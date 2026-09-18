@@ -1,18 +1,7 @@
 import Link from "next/link";
+import { Card, Empty, PageHeader, Stat } from "@/components/ui";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
-
-function Stat({ label, value, href }: { label: string; value: number; href: string }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-lg border border-zinc-200 p-4 hover:border-zinc-400 dark:border-zinc-800 dark:hover:border-zinc-600"
-    >
-      <div className="text-xs uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-    </Link>
-  );
-}
 
 export default async function OverviewPage() {
   const { workspace } = await requireWorkspace();
@@ -51,35 +40,49 @@ export default async function OverviewPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">{workspace.name}</h1>
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <PageHeader eyebrow="Headquarters" title={workspace.name} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Channels" value={accounts.count ?? 0} href="/app/channels" />
-        <Stat label="Managed listings" value={listings.count ?? 0} href="/app/sync" />
+        <Stat label="Managed listings" value={listings.count ?? 0} href="/app/catalogue" />
         <Stat label="Updates in flight" value={queued.count ?? 0} href="/app/sync" />
-        <Stat label="Needs attention" value={dead.count ?? 0} href="/app/sync" />
-        <Stat label="Open incidents" value={openIncidents.count ?? 0} href="/app/sync#incidents" />
+        <Stat
+          label="Needs attention"
+          value={dead.count ?? 0}
+          href="/app/sync"
+          tone={(dead.count ?? 0) > 0 ? "bad" : "default"}
+        />
+        <Stat
+          label="Open incidents"
+          value={openIncidents.count ?? 0}
+          href="/app/sync#incidents"
+          tone={(openIncidents.count ?? 0) > 0 ? "warn" : "default"}
+        />
       </div>
 
-      <h2 className="mt-10 text-lg font-semibold">Activity</h2>
+      <h2 className="font-display mt-10 mb-3 text-2xl text-naval">Activity</h2>
       {(activity.data?.length ?? 0) === 0 ? (
-        <p className="mt-2 text-sm text-zinc-500">
+        <Empty>
           Nothing yet.{" "}
-          <Link href="/app/channels" className="underline">
+          <Link href="/app/channels" className="text-mineral underline">
             Connect a channel
           </Link>{" "}
           to start.
-        </p>
+        </Empty>
       ) : (
-        <ul className="mt-3 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-          {activity.data?.map((a) => (
-            <li key={a.id} className="flex gap-4 py-2">
-              <span className="w-36 shrink-0 text-zinc-500">{new Date(a.created_at).toLocaleString("en-GB")}</span>
-              <span className={a.level === "error" ? "text-red-600" : a.level === "warn" ? "text-amber-600" : ""}>
-                {a.message}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <Card strong className="p-0">
+          <ul className="divide-y divide-concrete/50 text-sm">
+            {activity.data?.map((a) => (
+              <li key={a.id} className="flex gap-4 px-5 py-3">
+                <span className="tnum w-36 shrink-0 text-ink-muted">
+                  {new Date(a.created_at).toLocaleString("en-GB")}
+                </span>
+                <span className={a.level === "error" ? "text-bad" : a.level === "warn" ? "text-warn" : "text-naval"}>
+                  {a.message}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   );

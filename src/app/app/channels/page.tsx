@@ -1,13 +1,14 @@
+import { Badge, Button, Empty, Notice, PageHeader, Table, Td, Th } from "@/components/ui";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
 import { checkOrdersNow, importListingsAction, setSyncEnabled } from "./actions";
 
-const STATUS_LABEL: Record<string, string> = {
-  connecting: "Connecting",
-  healthy: "Connected",
-  degraded: "Degraded",
-  auth_revoked: "Reconnect needed",
-  disconnected: "Disconnected",
+const STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "neutral" }> = {
+  connecting: { label: "Connecting", tone: "neutral" },
+  healthy: { label: "Connected", tone: "ok" },
+  degraded: { label: "Degraded", tone: "warn" },
+  auth_revoked: { label: "Reconnect needed", tone: "bad" },
+  disconnected: { label: "Disconnected", tone: "bad" },
 };
 
 interface ImportStatus {
@@ -43,101 +44,100 @@ export default async function ChannelsPage(props: PageProps<"/app/channels">) {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Channels</h1>
-        <a
-          href="/connect/ebay/start"
-          className="rounded-md bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          Connect eBay
-        </a>
-      </div>
-      {notice ? (
-        <p className="mt-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
-          {notice}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100">{error}</p>
-      ) : null}
+      <PageHeader
+        eyebrow="Connections"
+        title="Channels"
+        description="Every marketplace account Mastore speaks to. Sync is off until you turn it on."
+        actions={
+          <a
+            href="/connect/ebay/start"
+            className="inline-flex items-center rounded-xl bg-structural px-4 py-2 text-sm font-semibold text-naval hover:bg-structural-600"
+          >
+            Connect eBay
+          </a>
+        }
+      />
+      {notice ? <Notice>{notice}</Notice> : null}
+      {error ? <Notice kind="error">{error}</Notice> : null}
 
       {(accounts?.length ?? 0) === 0 ? (
-        <p className="mt-6 text-sm text-zinc-500">
+        <Empty>
           No channels connected. Start with eBay: it imports your listings and nothing is pushed until you turn sync on.
-        </p>
+        </Empty>
       ) : (
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase tracking-wide text-zinc-500">
-              <tr>
-                <th className="py-2 pr-4">Channel</th>
-                <th className="py-2 pr-4">Account</th>
-                <th className="py-2 pr-4">Status</th>
-                <th className="py-2 pr-4">Listings</th>
-                <th className="py-2 pr-4">Sync</th>
-                <th className="py-2 pr-4">Last inbound</th>
-                <th className="py-2 pr-4">Last outbound</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {accounts?.map((a) => {
-                const imp = ((a.account_settings ?? {}) as { import?: ImportStatus }).import;
-                return (
-                  <tr key={a.id}>
-                    <td className="py-2 pr-4 capitalize">{a.channel}</td>
-                    <td className="py-2 pr-4">
-                      {a.display_name} <span className="text-zinc-500">({a.marketplace})</span>
-                    </td>
-                    <td className="py-2 pr-4">{STATUS_LABEL[a.status] ?? a.status}</td>
-                    <td className="py-2 pr-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-zinc-600 dark:text-zinc-400">{describeImport(imp)}</span>
-                        <form action={importListingsAction}>
-                          <input type="hidden" name="accountId" value={a.id} />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
-                          >
-                            {imp?.state ? "Import again" : "Import listings"}
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-4">
-                      <form action={setSyncEnabled}>
+        <Table>
+          <thead>
+            <tr>
+              <Th>Channel</Th>
+              <Th>Account</Th>
+              <Th>Status</Th>
+              <Th>Listings</Th>
+              <Th>Sync</Th>
+              <Th>Last inbound</Th>
+              <Th>Last outbound</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {accounts?.map((a) => {
+              const imp = ((a.account_settings ?? {}) as { import?: ImportStatus }).import;
+              const st = STATUS[a.status] ?? { label: a.status, tone: "neutral" as const };
+              return (
+                <tr key={a.id}>
+                  <Td className="font-medium capitalize text-naval">{a.channel}</Td>
+                  <Td>
+                    {a.display_name} <span className="text-ink-muted">({a.marketplace})</span>
+                  </Td>
+                  <Td>
+                    <Badge tone={st.tone}>{st.label}</Badge>
+                  </Td>
+                  <Td>
+                    <div className="flex items-center gap-3">
+                      <span className="text-ink-muted">{describeImport(imp)}</span>
+                      <form action={importListingsAction}>
                         <input type="hidden" name="accountId" value={a.id} />
-                        <input type="hidden" name="enabled" value={a.sync_enabled ? "0" : "1"} />
-                        <button
-                          type="submit"
-                          className={`rounded-md border px-3 py-1 text-xs ${a.sync_enabled ? "border-emerald-500 text-emerald-700" : "border-zinc-300 text-zinc-600 dark:border-zinc-700"}`}
-                        >
-                          {a.sync_enabled ? "On" : "Off"}
-                        </button>
+                        <Button type="submit" tone="ghost" size="sm">
+                          {imp?.state ? "Import again" : "Import listings"}
+                        </Button>
                       </form>
-                    </td>
-                    <td className="py-2 pr-4 text-zinc-500">
-                      <div className="flex items-center gap-2">
-                        <span>{a.last_inbound_at ? new Date(a.last_inbound_at).toLocaleString("en-GB") : "never"}</span>
-                        <form action={checkOrdersNow}>
-                          <input type="hidden" name="accountId" value={a.id} />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-zinc-300 px-2 py-0.5 text-xs dark:border-zinc-700"
-                          >
-                            Check now
-                          </button>
-                        </form>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-4 text-zinc-500">
-                      {a.last_outbound_at ? new Date(a.last_outbound_at).toLocaleString("en-GB") : "never"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  </Td>
+                  <Td>
+                    <form action={setSyncEnabled}>
+                      <input type="hidden" name="accountId" value={a.id} />
+                      <input type="hidden" name="enabled" value={a.sync_enabled ? "0" : "1"} />
+                      <button
+                        type="submit"
+                        aria-pressed={a.sync_enabled}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${a.sync_enabled ? "bg-structural" : "bg-concrete"}`}
+                        title={a.sync_enabled ? "Sync on" : "Sync off"}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${a.sync_enabled ? "translate-x-5" : "translate-x-0.5"}`}
+                        />
+                      </button>
+                    </form>
+                  </Td>
+                  <Td className="text-ink-muted">
+                    <div className="flex items-center gap-2">
+                      <span className="tnum">
+                        {a.last_inbound_at ? new Date(a.last_inbound_at).toLocaleString("en-GB") : "never"}
+                      </span>
+                      <form action={checkOrdersNow}>
+                        <input type="hidden" name="accountId" value={a.id} />
+                        <Button type="submit" tone="ghost" size="sm">
+                          Check now
+                        </Button>
+                      </form>
+                    </div>
+                  </Td>
+                  <Td className="tnum text-ink-muted">
+                    {a.last_outbound_at ? new Date(a.last_outbound_at).toLocaleString("en-GB") : "never"}
+                  </Td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </Table>
       )}
     </div>
   );

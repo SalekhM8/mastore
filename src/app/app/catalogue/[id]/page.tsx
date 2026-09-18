@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Badge, Button, Card, Notice, PageHeader, Stat } from "@/components/ui";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
 import { publishToChannel } from "../actions";
@@ -45,7 +46,7 @@ export default async function ProductPage(props: PageProps<"/app/catalogue/[id]"
 
   if (!product) {
     return (
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-ink-muted">
         Product not found.{" "}
         <Link href="/app/catalogue" className="underline">
           Back to catalogue
@@ -80,123 +81,110 @@ export default async function ProductPage(props: PageProps<"/app/catalogue/[id]"
 
   return (
     <div className="mx-auto max-w-4xl">
-      <Link href="/app/catalogue" className="text-sm text-zinc-500 hover:underline">
+      <Link href="/app/catalogue" className="text-sm text-ink-muted hover:underline">
         ← Catalogue
       </Link>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">{product.title}</h1>
-      {notice ? (
-        <p className="mt-4 rounded-md bg-emerald-50 p-3 text-sm text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100">
-          {notice}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100">{error}</p>
-      ) : null}
+      <div className="mt-2">
+        <PageHeader eyebrow={sku?.sku ?? ""} title={product.title} />
+      </div>
+      {notice ? <Notice>{notice}</Notice> : null}
+      {error ? <Notice kind="error">{error}</Notice> : null}
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          ["In stock", String(onHand)],
-          ["Price", pounds(product.base_price_minor)],
-          ["Cost", pounds(product.cost_minor)],
-          ["Margin before fees", margin === null ? "unknown" : pounds(margin)],
-        ].map(([k, v]) => (
-          <div key={k} className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-            <div className="text-xs uppercase tracking-wide text-zinc-500">{k}</div>
-            <div className="mt-1 text-lg font-semibold">{v}</div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="In stock" value={onHand} tone={onHand <= 0 ? "bad" : "default"} />
+        <Stat label="Price" value={pounds(product.base_price_minor)} />
+        <Stat label="Cost" value={pounds(product.cost_minor)} />
+        <Stat label="Margin before fees" value={margin === null ? "unknown" : pounds(margin)} />
       </div>
 
-      <dl className="mt-6 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-        <div>
-          <dt className="text-zinc-500">SKU</dt>
-          <dd className="font-mono text-xs">{sku?.sku}</dd>
-        </div>
-        <div>
-          <dt className="text-zinc-500">Type</dt>
-          <dd className="capitalize">{product.item_type}</dd>
-        </div>
-        <div>
-          <dt className="text-zinc-500">Condition</dt>
-          <dd>{product.condition?.replaceAll("_", " ") ?? "not set"}</dd>
-        </div>
-        <div>
-          <dt className="text-zinc-500">Brand</dt>
-          <dd>{product.brand ?? "not set"}</dd>
-        </div>
-      </dl>
-      {photos.length ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {photos.map((p) => (
-            // biome-ignore lint/performance/noImgElement: external marketplace photo URLs
-            <img key={p.position} src={p.storage_path} alt="" className="h-20 w-20 rounded object-cover" />
+      <Card className="mt-6">
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-4">
+          {[
+            ["Type", product.item_type],
+            ["Condition", product.condition?.replaceAll("_", " ") ?? "not set"],
+            ["Brand", product.brand ?? "not set"],
+            ["Added", new Date(product.created_at).toLocaleDateString("en-GB")],
+          ].map(([k, v]) => (
+            <div key={k}>
+              <dt className="eyebrow text-ink-muted">{k}</dt>
+              <dd className="mt-1 capitalize text-naval">{v}</dd>
+            </div>
           ))}
-        </div>
-      ) : null}
-      <p className="mt-4 whitespace-pre-wrap text-sm text-zinc-700 dark:text-zinc-300">{product.description}</p>
+        </dl>
+        {photos.length ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {photos.map((p) => (
+              // biome-ignore lint/performance/noImgElement: external marketplace photo URLs
+              <img key={p.position} src={p.storage_path} alt="" className="h-20 w-20 rounded-xl object-cover" />
+            ))}
+          </div>
+        ) : null}
+        <p className="mt-4 whitespace-pre-wrap text-sm text-ink-muted">{product.description}</p>
+      </Card>
 
-      <h2 className="mt-10 text-lg font-semibold">Channels</h2>
-      <table className="mt-3 w-full text-sm">
-        <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+      <h2 className="font-display mt-10 mb-3 text-2xl text-naval">Channels</h2>
+      <Card strong className="p-0">
+        <ul className="divide-y divide-concrete/50 text-sm">
           {accounts?.map((a) => {
             const l = listings.find((x) => x.channel_account_id === a.id);
             const err = l?.last_error as { message?: string } | null;
+            const canPublish = !listedOn.has(a.id) || l?.status === "error" || l?.status === "ended";
             return (
-              <tr key={a.id}>
-                <td className="py-2 pr-4 capitalize">
-                  {a.channel} <span className="text-zinc-500">{a.display_name}</span>
-                </td>
-                <td className="py-2 pr-4">
+              <li key={a.id} className="flex flex-wrap items-center gap-4 px-5 py-3">
+                <div className="w-40">
+                  <div className="font-medium capitalize text-naval">{a.channel}</div>
+                  <div className="text-xs text-ink-muted">{a.display_name}</div>
+                </div>
+                <div className="flex-1">
                   {l ? (
                     <>
-                      <span
-                        className={
-                          l.status === "active" ? "text-emerald-600" : l.status === "error" ? "text-red-600" : ""
+                      <Badge
+                        tone={
+                          l.status === "active"
+                            ? "ok"
+                            : l.status === "error"
+                              ? "bad"
+                              : l.status === "pending"
+                                ? "yellow"
+                                : "neutral"
                         }
                       >
                         {LISTING_LABEL[l.status] ?? l.status}
-                      </span>
+                      </Badge>
                       {l.status === "active" && !l.external_listing_id.startsWith("pending:") ? (
-                        <span className="ml-2 font-mono text-xs text-zinc-500">#{l.external_listing_id}</span>
+                        <span className="ml-2 font-mono text-xs text-ink-muted">#{l.external_listing_id}</span>
                       ) : null}
                       {l.status === "error" && err?.message ? (
-                        <div className="text-xs text-red-600">{err.message}</div>
+                        <div className="mt-1 text-xs text-bad">{err.message}</div>
                       ) : null}
                     </>
                   ) : (
-                    <span className="text-zinc-500">Not listed</span>
+                    <span className="text-ink-muted">Not listed</span>
                   )}
-                </td>
-                <td className="py-2 pr-4 text-right">
-                  {!listedOn.has(a.id) || l?.status === "error" || l?.status === "ended" ? (
-                    <form action={publishToChannel}>
-                      <input type="hidden" name="productId" value={product.id} />
-                      <input type="hidden" name="accountId" value={a.id} />
-                      <button
-                        type="submit"
-                        className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white dark:bg-white dark:text-black"
-                      >
-                        {l?.status === "error" || l?.status === "ended" ? "Publish again" : "Publish"}
-                      </button>
-                    </form>
-                  ) : null}
-                </td>
-              </tr>
+                </div>
+                {canPublish ? (
+                  <form action={publishToChannel}>
+                    <input type="hidden" name="productId" value={product.id} />
+                    <input type="hidden" name="accountId" value={a.id} />
+                    <Button type="submit" size="sm">
+                      {l?.status === "error" || l?.status === "ended" ? "Publish again" : "Publish"}
+                    </Button>
+                  </form>
+                ) : null}
+              </li>
             );
           })}
           {(accounts?.length ?? 0) === 0 ? (
-            <tr>
-              <td className="py-2 text-zinc-500">
-                No channels connected.{" "}
-                <Link href="/app/channels" className="underline">
-                  Connect one
-                </Link>
-                .
-              </td>
-            </tr>
+            <li className="px-5 py-4 text-ink-muted">
+              No channels connected.{" "}
+              <Link href="/app/channels" className="text-mineral underline">
+                Connect one
+              </Link>
+              .
+            </li>
           ) : null}
-        </tbody>
-      </table>
+        </ul>
+      </Card>
     </div>
   );
 }

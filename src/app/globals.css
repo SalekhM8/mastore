@@ -1,26 +1,145 @@
 @import "tailwindcss";
 
+/*
+ * Mastore HQ design tokens. Source: brand board v3 (docs/brand-board-v3.png).
+ * Naval / Mineral / Structural Yellow / Bone / Concrete / Optical White.
+ * Display face: Couture Narrow when the licensed files are in /public/fonts, otherwise
+ * Big Shoulders Display, which shares its tall condensed shape. Body: Inter.
+ */
+
+@font-face {
+  font-family: "Couture Narrow";
+  src: url("/fonts/CoutureNarrow-Bold.woff2") format("woff2"), url("/fonts/CoutureNarrow-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Couture Narrow";
+  src: url("/fonts/CoutureNarrow-Regular.woff2") format("woff2"), url("/fonts/CoutureNarrow-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-naval: #06233d;
+  --color-naval-900: #041a2e;
+  --color-naval-800: #06233d;
+  --color-naval-700: #0d2f4d;
+  --color-mineral: #234a66;
+  --color-mineral-600: #2b5a85;
+  --color-mineral-500: #3a6f9f;
+  --color-mineral-200: #b9cbdb;
+  --color-structural: #ffb72b;
+  --color-structural-600: #e6a11c;
+  --color-structural-200: #ffe3a6;
+  --color-bone: #f4f1e9;
+  --color-bone-200: #ebe7dd;
+  --color-concrete: #d9d8d2;
+  --color-concrete-600: #a9a7a0;
+  --color-optical: #ffffff;
+  --color-ink: #06233d;
+  --color-ink-muted: #4d6478;
+  --color-ok: #1f7a4d;
+  --color-warn: #9a5b00;
+  --color-bad: #b3261e;
+
+  --font-display: "Couture Narrow", var(--font-big-shoulders), "Arial Narrow", Impact, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-glass: 20px;
+  --shadow-glass: 0 1px 2px rgba(6, 35, 61, 0.06), 0 12px 40px -16px rgba(6, 35, 61, 0.25);
+  --shadow-float: 0 20px 60px -20px rgba(6, 35, 61, 0.45);
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bone);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display type: tall, tight, always upper case. */
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  line-height: 0.92;
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Glass surfaces. Light glass on Bone, dark glass on Naval. */
+.glass {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-radius: var(--radius-glass);
+}
+.glass-strong {
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border-radius: var(--radius-glass);
+}
+.glass-dark {
+  background: linear-gradient(160deg, rgba(35, 74, 102, 0.55), rgba(6, 35, 61, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-radius: var(--radius-glass);
+}
+
+/* Naval backdrop with the board's vertical hairlines and a mineral glow. */
+.naval-scene {
+  background-color: var(--color-naval);
+  background-image:
+    radial-gradient(900px 500px at 80% -10%, rgba(58, 111, 159, 0.55), transparent 60%),
+    radial-gradient(700px 400px at 10% 110%, rgba(43, 90, 133, 0.45), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 26px);
+}
+
+/* Focus ring in Structural Yellow for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--color-structural);
+  outline-offset: 2px;
+}
+
+/* Sidebar slide. */
+.sidebar-transition {
+  transition:
+    width 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-transition {
+    transition: none;
+  }
+}
+
+/* Tabular numbers in tables. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }

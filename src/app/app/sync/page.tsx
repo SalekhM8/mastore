@@ -1,14 +1,15 @@
+import { Badge, Button, Card, Empty, PageHeader, Table, Td, Th } from "@/components/ui";
 import { supabaseServer } from "@/lib/supabase/server";
 import { requireWorkspace } from "@/lib/workspace";
 import { acknowledgeIncident, retryJob } from "./actions";
 
-const JOB_LABEL: Record<string, string> = {
-  queued: "Queued",
-  running: "Updating…",
-  succeeded: "Done",
-  failed: "Retrying",
-  superseded: "Superseded",
-  dead: "Failed",
+const JOB: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "neutral" | "yellow" }> = {
+  queued: { label: "Queued", tone: "neutral" },
+  running: { label: "Updating…", tone: "yellow" },
+  succeeded: { label: "Done", tone: "ok" },
+  failed: { label: "Retrying", tone: "warn" },
+  superseded: { label: "Superseded", tone: "neutral" },
+  dead: { label: "Failed", tone: "bad" },
 };
 
 function describeError(e: unknown): string {
@@ -42,119 +43,106 @@ export default async function SyncPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Sync</h1>
-      <p className="mt-1 text-sm text-zinc-500">Every update Sync has sent or is about to send, newest first.</p>
+      <PageHeader
+        eyebrow="Outbound"
+        title="Sync"
+        description="Every update Mastore has sent or is about to send, newest first."
+      />
 
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs uppercase tracking-wide text-zinc-500">
+      {jobs.data?.length ? (
+        <Table>
+          <thead>
             <tr>
-              <th className="py-2 pr-4">When</th>
-              <th className="py-2 pr-4">Channel</th>
-              <th className="py-2 pr-4">Listing</th>
-              <th className="py-2 pr-4">Change</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4" />
+              <Th>When</Th>
+              <Th>Channel</Th>
+              <Th>Listing</Th>
+              <Th>Change</Th>
+              <Th>Status</Th>
+              <Th />
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {jobs.data?.length ? (
-              jobs.data.map((j) => {
-                const desired = (j.desired ?? {}) as { quantity?: number };
-                const acct = j.channel_accounts as { channel: string; display_name: string } | null;
-                const listing = j.channel_listings as {
-                  external_listing_id: string;
-                  title_snapshot: string | null;
-                } | null;
-                const status = JOB_LABEL[j.status] ?? j.status;
-                const tone =
-                  j.status === "dead"
-                    ? "text-red-600"
-                    : j.status === "failed"
-                      ? "text-amber-600"
-                      : j.status === "succeeded"
-                        ? "text-emerald-600"
-                        : "";
-                return (
-                  <tr key={j.id}>
-                    <td className="py-2 pr-4 text-zinc-500">{new Date(j.created_at).toLocaleString("en-GB")}</td>
-                    <td className="py-2 pr-4 capitalize">{acct?.channel}</td>
-                    <td className="py-2 pr-4">{listing?.title_snapshot ?? listing?.external_listing_id}</td>
-                    <td className="py-2 pr-4">
-                      {j.kind === "delist"
-                        ? "End listing"
-                        : j.kind === "stock"
-                          ? `Quantity → ${desired.quantity ?? 0}`
-                          : j.kind}
-                    </td>
-                    <td className={`py-2 pr-4 ${tone}`}>
-                      {status}
-                      {j.status === "failed" ? ` (attempt ${j.attempts} of 6)` : ""}
-                      {j.status === "dead" && j.last_error ? (
-                        <div className="text-xs text-zinc-500">{describeError(j.last_error)}</div>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {j.status === "dead" ? (
-                        <form action={retryJob}>
-                          <input type="hidden" name="jobId" value={j.id} />
-                          <button
-                            type="submit"
-                            className="rounded-md border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
-                          >
-                            Retry
-                          </button>
-                        </form>
-                      ) : null}
-                    </td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={6} className="py-6 text-center text-zinc-500">
-                  No updates yet.
-                </td>
-              </tr>
-            )}
+          <tbody>
+            {jobs.data.map((j) => {
+              const desired = (j.desired ?? {}) as { quantity?: number };
+              const acct = j.channel_accounts as { channel: string; display_name: string } | null;
+              const listing = j.channel_listings as {
+                external_listing_id: string;
+                title_snapshot: string | null;
+              } | null;
+              const st = JOB[j.status] ?? { label: j.status, tone: "neutral" as const };
+              const change =
+                j.kind === "delist"
+                  ? "End listing"
+                  : j.kind === "stock"
+                    ? `Quantity → ${desired.quantity ?? 0}`
+                    : j.kind === "listing_create"
+                      ? "Publish listing"
+                      : j.kind;
+              return (
+                <tr key={j.id}>
+                  <Td className="tnum text-ink-muted">{new Date(j.created_at).toLocaleString("en-GB")}</Td>
+                  <Td className="capitalize">{acct?.channel}</Td>
+                  <Td className="max-w-xs truncate">{listing?.title_snapshot ?? listing?.external_listing_id}</Td>
+                  <Td>{change}</Td>
+                  <Td>
+                    <Badge tone={st.tone}>{st.label}</Badge>
+                    {j.status === "failed" ? (
+                      <span className="ml-2 text-xs text-ink-muted">attempt {j.attempts} of 6</span>
+                    ) : null}
+                    {j.status === "dead" && j.last_error ? (
+                      <div className="mt-1 text-xs text-bad">{describeError(j.last_error)}</div>
+                    ) : null}
+                  </Td>
+                  <Td>
+                    {j.status === "dead" ? (
+                      <form action={retryJob}>
+                        <input type="hidden" name="jobId" value={j.id} />
+                        <Button type="submit" tone="ghost" size="sm">
+                          Retry
+                        </Button>
+                      </form>
+                    ) : null}
+                  </Td>
+                </tr>
+              );
+            })}
           </tbody>
-        </table>
-      </div>
+        </Table>
+      ) : (
+        <Empty>No updates yet.</Empty>
+      )}
 
-      <h2 id="incidents" className="mt-10 text-lg font-semibold">
+      <h2 id="incidents" className="font-display mt-10 mb-3 text-2xl text-naval">
         Incidents
       </h2>
       {incidents.data?.length ? (
-        <ul className="mt-3 divide-y divide-zinc-200 text-sm dark:divide-zinc-800">
-          {incidents.data.map((i) => {
-            const acct = i.channel_accounts as { channel: string; display_name: string } | null;
-            return (
-              <li key={i.id} className="flex items-center gap-4 py-2">
-                <span className="w-36 shrink-0 text-zinc-500">{new Date(i.created_at).toLocaleString("en-GB")}</span>
-                <span
-                  className={`rounded px-2 py-0.5 text-xs ${i.severity === 1 ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"}`}
-                >
-                  {i.kind.replace("_", " ")}
-                </span>
-                <span className="capitalize">{acct?.channel}</span>
-                <span className="flex-1 text-zinc-500">{i.status}</span>
-                {i.status === "open" ? (
-                  <form action={acknowledgeIncident}>
-                    <input type="hidden" name="incidentId" value={i.id} />
-                    <button
-                      type="submit"
-                      className="rounded-md border border-zinc-300 px-3 py-1 text-xs dark:border-zinc-700"
-                    >
-                      Acknowledge
-                    </button>
-                  </form>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <Card strong className="p-0">
+          <ul className="divide-y divide-concrete/50 text-sm">
+            {incidents.data.map((i) => {
+              const acct = i.channel_accounts as { channel: string; display_name: string } | null;
+              return (
+                <li key={i.id} className="flex flex-wrap items-center gap-4 px-5 py-3">
+                  <span className="tnum w-36 shrink-0 text-ink-muted">
+                    {new Date(i.created_at).toLocaleString("en-GB")}
+                  </span>
+                  <Badge tone={i.severity === 1 ? "bad" : "warn"}>{i.kind.replaceAll("_", " ")}</Badge>
+                  <span className="capitalize">{acct?.channel}</span>
+                  <span className="flex-1 text-ink-muted">{i.status}</span>
+                  {i.status === "open" ? (
+                    <form action={acknowledgeIncident}>
+                      <input type="hidden" name="incidentId" value={i.id} />
+                      <Button type="submit" tone="ghost" size="sm">
+                        Acknowledge
+                      </Button>
+                    </form>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
       ) : (
-        <p className="mt-2 text-sm text-zinc-500">No open incidents.</p>
+        <Empty>No open incidents.</Empty>
       )}
     </div>
   );
