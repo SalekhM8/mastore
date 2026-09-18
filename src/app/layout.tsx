@@ -4,7 +4,7 @@ import { bigShoulders, inter } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: { default: "Mastore HQ", template: "%s · Mastore HQ" },
-  description: "The commerce headquarters. One catalogue, every marketplace, stock that never oversells.",
+  description: "The commerce headquarters for multi-channel sellers. Stock and margin problems, solved before they happen.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

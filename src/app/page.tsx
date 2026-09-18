@@ -37,7 +37,7 @@ export default function Home() {
               market. Move first.
             </h1>
             <p className="mt-5 max-w-lg text-base text-bone/85 sm:text-lg">
-              One view across every channel, listing and sale. Stock problems fixed before they become problems.
+              One view across every channel, listing and sale. Stock and margin problems, solved before they happen.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
